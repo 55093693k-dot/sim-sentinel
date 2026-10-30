@@ -192,6 +192,13 @@ def watched():
     return glob.glob(os.path.join(WATCH, CFG["log_glob"]), recursive=True)
 
 
+#: What the last poll learned about the process table, so `main()` can print it without
+#: asking the operating system a second time. Reading the process list is the single most
+#: expensive call in a poll (measured: about 2 s on a loaded machine), and it is only needed
+#: for a log that does not already show a closing summary line.
+_LAST_ALIVE = {"value": "not queried"}
+
+
 def classify(tail_text, alive, size, prev_size, stall_count, stall_after,
              done_re=None, err_re=None):
     """Verdict for ONE log file, from text and facts only.
@@ -267,7 +274,8 @@ def poll():
     if os.path.exists(PAUSE):
         return []
     st = load_state()
-    alive = engines_alive()
+    alive = None
+    alive_known = False
     events = []
     for lg in watched():
         try:
@@ -292,6 +300,13 @@ def poll():
         hits = list(re.finditer(r"(\d+(?:\.\d+)?)\s*%\s*complete", txt, re.I))
         if hits:
             pct = hits[-1].group(1) + "%"
+
+        # Ask for the process list only when the log does not already say "finished":
+        # the closing summary line is enough on its own, and the process list is the
+        # expensive part of a poll.
+        if DONE_RE.search(txt) is None and not alive_known:
+            alive, alive_known = engines_alive(), True
+            _LAST_ALIVE["value"] = alive
 
         status, rec["stall"], ev = classify(txt, alive, size, rec.get("size", -1),
                                             rec.get("stall", 0), CFG["stall_after"])
@@ -359,7 +374,7 @@ def main():
         print("%s %s %s toast_rc=%s" % (e["ts"], e["kind"], e["log"], e.get("toast_rc")))
     if not ev:
         print("%s no event (engines_alive=%s, logs_watched=%d)"
-              % (now(), engines_alive(), len(watched())))
+              % (now(), _LAST_ALIVE["value"], len(watched())))
     return 0
 
 

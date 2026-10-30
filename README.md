@@ -71,6 +71,40 @@ Every raised event carries the same evidence in its `why` field, so `logs/events
 "why did it tell me that" months later without rerunning anything.
 
 
+### What one poll does
+
+1. The scheduled task fires and calls the launcher (a batch file).
+2. The launcher writes one heartbeat line into `logs\` before anything else.
+3. Python starts, reads `config.json`.
+4. It scans the watch folder for `*_p0.log` (pattern is configurable) and skips anything untouched for 15 minutes.
+5. For each log it reads **only the last 6 KB** — progress lines sit at the end, the whole file is not needed.
+6. It checks two things against the pattern lists: a closing summary line, and an anchored error line.
+7. **Only when there is no closing summary line** does it ask the operating system whether an engine process is alive. That is the slowest step in a poll, so it is skipped whenever the log already says "finished".
+8. It compares with the stored record: a changed state raises one toast and appends one JSON line; then the record is saved and the process exits.
+
+Nothing stays resident, and there is no background service. When nothing new has appeared, it does not even read the process list.
+
+## What it costs
+
+Measured on the machine that produced this repository (2026-10-31, same code, conda base vs a
+python.org 3.14 install):
+
+| Situation | Wall clock | Peak memory |
+|---|---|---|
+| idle, no logs (process list not read) | 1.7–3.1 s | 15 MB (3.14) / 48 MB (conda base) |
+| 500 finished logs | 1.7–3.4 s | same |
+| 500 unfinished logs (reads the process list once) | 4.2–4.6 s | same |
+
+- **Memory is not held.** A short-lived process starts each minute, peaks in the tens of megabytes
+  and exits; while it is not running it occupies nothing.
+- **The cost barely grows with the number of logs.** 500 logs cost under a second more than none;
+  the fixed part is interpreter start-up plus, when needed, one read of the process list.
+- **The interpreter matters most.** The same script peaks at 15 MB under python.org 3.14 and 48 MB
+  under a miniconda base environment — that is the one line worth changing in `sentinel_run.cmd`.
+
+On disk only two things grow: the state record (about 88 KB for 500 logs) and the event record
+(one line per notification).
+
 ## Quick start
 
 ```
