@@ -106,6 +106,18 @@ elapsed 41m 07s   progress 99.4%
 sim\gc_taper\gc_taper_p0.log
 ```
 
+![Example toast](docs/toast-example.png)
+
+> *How the toast looks on the machine named in the test: title line = verdict + log file name,
+> second line = elapsed time and the last progress value, third line = the log path. The sender is
+> shown as Windows PowerShell because the tool reuses that built-in app identifier — nothing is
+> installed or registered.*
+>
+> *What the image does not show: it came from a manual poll of a demo directory, not from a scheduled
+> trigger; `elapsed 4s` is that demo run, not a typical FDTD run; and no judgement about the physics is
+> implied — the tool reports state transitions only. Whether a toast is visible still depends on the
+> system's notification settings.*
+
 One line of evidence, appended, never rewritten:
 
 ```json
