@@ -19,15 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
---------------------------------------------------------------------------
-
-This licence covers the CODE in this repository: `sentinel/sentinel.py`,
-`sentinel/toast.ps1`, `sentinel/config.example.json`, `launch/sentinel_run.cmd`,
-`launch/register_tasks.ps1` and `_selftest_kit.ps1`.
-
-The written text -- `README.md` and the prose inside `CITATION.cff` -- is
-licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
-That split is recorded in `CITATION.cff` as an array, which the Citation File
-Format reads as "or"; the archived record takes its single licence identifier
-from `.zenodo.json` instead.

@@ -118,7 +118,7 @@ RESULT: ALL PASS
 ## Licence
 
 代码（`*.py`、`*.ps1`、`*.cmd`、`*.json`）为 MIT，见 `LICENSE`。
-本文件与仓库内的说明文字为 CC BY 4.0。
+本文件与仓库内的说明文字为 CC BY 4.0，见 `LICENSE-docs.md`。
 
 ## English
 
