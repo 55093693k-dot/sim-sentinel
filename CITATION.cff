@@ -28,12 +28,14 @@ authors:
     given-names: "King Ho"
     orcid: "https://orcid.org/0009-0002-0435-2030"
 type: software
-version: "v1.0.0"
+version: "1.0.1"
 # An SPDX *expression* is not accepted by the Citation File Format schema; it takes identifiers
 # only, as a single string or as an array, and an array means "or".  Code is MIT, prose is CC BY 4.0.
 license:
   - "MIT"
   - "CC-BY-4.0"
+url: "https://github.com/55093693k-dot/sim-sentinel"
+repository-code: "https://github.com/55093693k-dot/sim-sentinel"
 keywords:
   - simulation log watcher
   - Windows toast notification
@@ -43,6 +45,6 @@ keywords:
   - EME
   - engineering workflow
   - evidence only
-# DOI: none yet. The archive number is minted by the archiving service on the first release and is
-# written back into this file and the README at that point; until then this repository has no
-# citable identifier, only a URL and an access date.
+# DOI: the *version* DOI of the archived release v1.0.1 (2026-10-30), and the *concept* DOI that
+# covers every version of this repository, which is 10.5281/zenodo.23817306.
+doi: "10.5281/zenodo.23817307"

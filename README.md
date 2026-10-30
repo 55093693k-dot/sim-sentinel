@@ -8,6 +8,7 @@ Every verdict is appended to disk as a single JSON line, so "did it tell me last
 ![python](https://img.shields.io/badge/python-3.8%2B-blue)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-lightgrey)
 [![verdict tests](https://github.com/55093693k-dot/sim-sentinel/actions/workflows/tests.yml/badge.svg)](https://github.com/55093693k-dot/sim-sentinel/actions/workflows/tests.yml)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23817306.svg)](https://doi.org/10.5281/zenodo.23817306)
 
 **Who this is for.** Anyone running long local simulations — Lumerical FDTD or MODE, or any solver
 that writes progress lines to a log — on a laptop, without a cluster and without wanting to install a
@@ -222,14 +223,15 @@ would use it.
 
 ## Citation
 
-`CITATION.cff` holds the citation record. The archive identifier (DOI) is minted by the archiving
-service at the first release and written back into that file; until then this repository has no
-citable identifier, and a citation should name the repository URL and an access date.
+Archived: **v1.0.1**, DOI **[10.5281/zenodo.23817307](https://doi.org/10.5281/zenodo.23817307)**.
+The concept DOI, which always resolves to the latest archived version, is
+**[10.5281/zenodo.23817306](https://doi.org/10.5281/zenodo.23817306)**. `CITATION.cff` carries the
+same record.
 
-Questions and suggestions go to the repository's issues. This is a personal tool and replies are not
-guaranteed to be quick; if you adapt the verdict vocabulary to another solver, paste the vocabulary
-together with the raw log lines it was derived from — that is more useful than a description of the
-symptom.
+Questions and suggestions go to the repository's issues or Discussions. This is a personal tool and
+replies are not guaranteed to be quick; if you adapt the verdict vocabulary to another solver, paste
+the vocabulary together with the raw log lines it was derived from — that is more useful than a
+description of the symptom.
 
 ## Licence
 
