@@ -101,8 +101,8 @@ nothing:
 One toast:
 
 ```
-仿真完成：gc_taper_p0.log
-耗时 41分07秒　进度 99.4%
+Simulation finished: gc_taper_p0.log
+elapsed 41m 07s   progress 99.4%
 sim\gc_taper\gc_taper_p0.log
 ```
 
@@ -113,8 +113,8 @@ One line of evidence, appended, never rewritten:
  "pct": "99.4%", "last": "total FDTD solver speed on 10 processes (Mnodes/s): 214.5", "toast_rc": 0}
 ```
 
-The toast text is Chinese because the machine that ran this is set up that way; the payload in
-`sentinel.py` is a two-entry dictionary and can be changed in place.
+The two strings are built in `poll()`: the verdict word changes with the state, the rest is fixed, so
+translating the toast is a one-line edit. Nothing else in the tool is language-dependent.
 
 Two counter-intuitive facts live in the verdict vocabulary; read the comment block at the top of
 `sentinel/sentinel.py` before changing it. `Auto Shutoff` is an automatic-shutoff *threshold* printed

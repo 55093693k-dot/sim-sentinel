@@ -306,17 +306,18 @@ def poll():
             rec["announced"] = status + os.path.basename(lg)
             rel = os.path.relpath(lg, ROOT)
             name = os.path.basename(lg)
-            zh = {"FINISHED": "完成", "FAILED": "失败", "STALLED": "疑似中断"}[status]
+            label = {"FINISHED": "finished", "FAILED": "failed", "STALLED": "stalled"}[status]
             elapsed = ""
             try:
                 secs = time.time() - float(rec.get("first_seen", 0) or 0)
                 if secs > 0:
-                    elapsed = ("%d分%02d秒" % (int(secs // 60), int(secs % 60))
-                               if secs >= 60 else ("%d秒" % int(secs)))
+                    elapsed = ("%dm %02ds" % (int(secs // 60), int(secs % 60))
+                               if secs >= 60 else ("%ds" % int(secs)))
             except Exception:
                 elapsed = ""
-            title = "仿真" + zh + "：" + name
-            body = "耗时 " + (elapsed or "未观测") + ("　进度 " + pct if pct else "") + "\n" + rel
+            title = "Simulation %s: %s" % (label, name)
+            body = "elapsed %s%s\n%s" % (elapsed or "not observed",
+                                         "   progress " + pct if pct else "", rel)
             rc = notify(title, body)
             why = "; ".join("%s: %s" % (r, d) for r, d in ev)[:200]
             event = {"ts": now(), "kind": status, "log": rel, "pct": pct,
@@ -333,7 +334,7 @@ def poll():
 def main():
     args = sys.argv[1:]
     if "--test" in args:
-        rc = notify("哨兵自检 ✓", "toast 通路正常；计划任务已启用。\n" + now())
+        rc = notify("Sentinel self-test", "toast channel OK; the scheduled task is enabled.\n" + now())
         append(EVENTS, {"ts": now(), "kind": "TEST", "toast_rc": rc})
         print("test toast rc=%s" % rc)
         return 0
