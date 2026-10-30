@@ -1,52 +1,66 @@
 # sim-sentinel
 
-一个一分钟跑一次的 Windows 计划任务，加一份只依赖文件的判定状态机。
-它读仿真器自己写下的引擎日志（`<project>_p0.log`），在**跑完／跑挂／卡住**这三种状态第一次出现时，
-往桌面推一条中文通知，并在磁盘上追加一行证据。
+One Windows scheduled task, one file-only state machine: read the engine log a simulation solver
+writes itself, and raise **one** toast the first time a run is seen to finish, fail or stall.
+Every verdict is appended to disk as a single JSON line, so "did it tell me last night?" has an answer.
 
-- **平台**：Windows 10 / 11
-- **依赖**：Python 3.8 以上（只用标准库）、PowerShell 5.1（系统自带）
-- **不做什么**：不查询求解器内部状态，不判断结果是否收敛或正确，不提交、不取消任何云端任务
-- **代码量**：五个文件共 412 行（含配置样例），另附 90 行的端到端自测脚本
+![license](https://img.shields.io/badge/license-MIT-blue)
+![python](https://img.shields.io/badge/python-3.8%2B-blue)
+![platform](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-lightgrey)
 
-## 三条判据
+**Who this is for.** Anyone running long local simulations — Lumerical FDTD or MODE, or any solver
+that writes progress lines to a log — on a laptop, without a cluster and without wanting to install a
+monitoring stack.
 
-整套工具只从日志取事实，由此推出三条判据，代码里每一处设计都能追到其中一条。
+**What it does not do.** It does not query the solver, does not judge whether a result is converged,
+energy-conserving or correct, and does not submit or cancel a cloud task. It answers one question:
+*did the run finish, fail, or stop moving?*
 
-| 判据 | 含义 |
+## The problem
+
+A three-dimensional FDTD run or an EME sweep usually outlasts the time a person can sit in front of
+the screen. The solver offers no completion callback: it writes a log and exits. So the only fact
+available is the log file, and the only useful behaviour is to watch it from outside.
+
+## How it decides
+
+Three rules; every line of code traces to one of them.
+
+| Rule | Meaning |
 |---|---|
-| 只认文件，不猜 | 不向求解器查询内部状态；没有日志就没有结论 |
-| 只报转变，不报轮询 | 每个日志记住已宣告过的状态，一次运行只弹一条 |
-| 只认产物，不认回显 | 心跳时间戳、产物修改时间、只追加的事件记录才算证据；脚本自己打印「成功」不算 |
+| Evidence only | The tool never asks the solver anything. No log, no verdict. When it cannot read the process table it stays silent instead of guessing. |
+| Transitions only | Each log file carries one state record, remembering the last announced state. One run produces exactly one notification, however often it polls. |
+| Execution evidence, not echo | A printed "success", a fresh *Last Run Time* and an exit code of 0 are not evidence. A heartbeat timestamp, a product modification time and an append-only event record are. |
 
-## 安装
+## Quick start
 
 ```
 <ROOT>\
-├─ sim\                         仿真工程，*_p0.log 在这里（递归扫描）
-├─ sentinel\                    sentinel.py / toast.ps1 / config.json
-├─ launch\                      sentinel_run.cmd / register_tasks.ps1
-├─ logs\                        state.json / events.jsonl / toast.log / 心跳
-└─ _selftest_kit.ps1            端到端自测
+├─ sim\                       engine logs, <project>_p0.log, scanned recursively
+├─ sentinel\                  sentinel.py / toast.ps1 / config.json
+├─ launch\                    sentinel_run.cmd / register_tasks.ps1
+├─ logs\                      state.json / events.jsonl / toast.log / heartbeat
+└─ _selftest_kit.ps1          end-to-end self-test
 ```
 
-三步：
+1. Copy `sentinel/config.example.json` to `sentinel/config.json` and set `root` to `<ROOT>`.
+2. In `launch/sentinel_run.cmd`, set the interpreter on the `set PY=` line. Nothing may follow it on
+   that line — `set` takes the rest of the line as the value.
+3. `powershell -ExecutionPolicy Bypass -File launch\register_tasks.ps1` — add `-Preview` to see the
+   configuration without registering, `-Remove` to unregister.
 
-1. `sentinel\config.example.json` 复制为 `config.json`，把 `root` 改成上面的 `<ROOT>`。
-2. `launch\sentinel_run.cmd` 里 `set PY=` 那一行改成解释器路径（这一行不能带行尾注释）。
-3. `powershell -ExecutionPolicy Bypass -File launch\register_tasks.ps1`（先加 `-Preview` 看配置，`-Remove` 卸载）。
+Three settings are not optional; drop any one and the task "looks like it is running" while doing
+nothing:
 
-注册时三个设置不能省，缺任何一个任务都会「看起来在运行」而什么都不做：
-
-| 设置 | 缺了会怎样 |
+| Setting | Without it |
 |---|---|
-| `-AllowStartIfOnBatteries` / `-DontStopIfGoingOnBatteries` | 笔记本拔电后不再触发，且不报错 |
-| `-MultipleInstances IgnoreNew` | 一次实例卡住，之后每分钟的触发全被静默丢弃 |
-| `-ExecutionTimeLimit <有限值>` | 默认上限七十二小时，卡住的实例永不释放 |
+| `-AllowStartIfOnBatteries` / `-DontStopIfGoingOnBatteries` | On a laptop it stops triggering once unplugged, silently |
+| `-MultipleInstances IgnoreNew` | One wedged instance makes every later trigger be dropped silently |
+| `-ExecutionTimeLimit <finite>` | The default limit is 72 hours, so a wedged instance never frees itself |
 
-## 你会看到什么
+## What you see
 
-一条通知：
+One toast:
 
 ```
 仿真完成：gc_taper_p0.log
@@ -54,25 +68,32 @@
 sim\gc_taper\gc_taper_p0.log
 ```
 
-一行证据（只追加，永远不改）：
+One line of evidence, appended, never rewritten:
 
 ```json
 {"ts": "2026-10-29 17:34:52", "kind": "FINISHED", "log": "sim\\gc_taper\\gc_taper_p0.log",
  "pct": "99.4%", "last": "total FDTD solver speed on 10 processes (Mnodes/s): 214.5", "toast_rc": 0}
 ```
 
-判定词表里有两处反直觉的地方，改代码前先读 `sentinel/sentinel.py` 顶部注释：
-`Auto Shutoff` 是自动关断阈值而不是完成标记（它印在每一行进度里），
-完成行可能停在 99.4%（所以「等到 100%」不成立）。
+The toast text is Chinese because the machine that ran this is set up that way; the payload in
+`sentinel.py` is a two-entry dictionary and can be changed in place.
 
-## 自测
+Two counter-intuitive facts live in the verdict vocabulary; read the comment block at the top of
+`sentinel/sentinel.py` before changing it. `Auto Shutoff` is an automatic-shutoff *threshold* printed
+on every progress line, not a completion marker. And the closing summary line of a finished run may
+sit at 99.4%, so "wait for 100%" is not a criterion either. Error words are matched anchored
+(`^\s*error\s*:`) because ordinary log prose contains "error" and "cannot" as well.
+
+## Verify it yourself
 
 ```
 powershell -ExecutionPolicy Bypass -File _selftest_kit.ps1
 ```
 
-它把工具箱复制到临时目录，造四个假日志、按顺序运行十次，断言「该静默时静默、该报时只报一次」，
-测完删除沙箱（`-Keep` 保留）。不发通知，不写真实状态。期望输出：
+It copies the kit into a temporary directory, builds four fake logs, runs the sentinel ten times in
+order and asserts "silent when it should be silent, one notification when it should report". The
+sandbox is deleted afterwards (`-Keep` keeps it); no toast is shown and no real state is touched.
+Expected output:
 
 ```
 PASS  finished log, FIRST sight -> silent baseline   expect=0 got=0
@@ -85,55 +106,75 @@ PASS  pause marker -> polling skipped                 expect=2 got=2
 RESULT: ALL PASS
 ```
 
-## 实测读数
+## Readings
 
-每一行都带适用范围 —— 脱离范围的数字在本主题里没有意义。
+Each number carries the conditions it was taken under; without them the number means nothing here.
 
-| 指标 | 读数 | 适用范围 |
+| Quantity | Reading | Conditions |
 |---|---|---|
-| 判定规则用例 | 6/6 通过 | 2026-09-26，单机 |
-| 真实日志回放 | 77 个 → FINISHED 68 / FAILED 1 / UNKNOWN 8 | 同日，一次性重判当时那棵工作树 |
-| 单次轮询覆盖 | 503 个日志文件 | 2026-10-22 09:15 的健康报告 |
-| 心跳连续性 | 13 个连续分钟时间戳（15:22:02 → 15:34:02） | 当时机器，无人干预 |
-| 端到端自测 | 7/7 断言通过 | 2026-10-29 与 2026-10-31 各一次，本机临时目录 |
-| 卡住指纹 | `State=Running` + `Last Result=267009` | 0x00041301，实例仍在运行 |
+| verdict-rule cases | 6/6 pass | 2026-09-26, one machine |
+| replay of real logs | 77 logs → FINISHED 68 / FAILED 1 / UNKNOWN 8 | same day, one-off re-judgement of that work tree |
+| logs covered per poll | 503 files | health report of 2026-10-22 09:15 |
+| heartbeat continuity | 13 consecutive minute timestamps (15:22:02 → 15:34:02) | that machine, unattended |
+| end-to-end self-test | 7/7 assertions | 2026-10-29 and 2026-10-31, temporary directory |
+| wedged-task fingerprint | `State=Running` + `Last Result=267009` | 0x00041301, an instance still running |
 
-## 适用范围与已知缺陷
+## Limitations and known defects
 
-- **只覆盖 Windows。** 应用标识、任务调度器、进程列表都是 Windows 专有；换到 Linux，状态机与判定词表可原样复用，替换 `cron` 与 `notify-send` 两处外壳。
-- **只覆盖本机。** 云端任务（例如 Tidy3D 云端求解）的日志不在本地，需要另开一条只读轮询：只查任务状态，不提交、不取消；凭据放在仓外的本机文件里。本仓不含这条通道。
-- **不判断物理是否正确。** 它回答「跑完了没有」，不回答「结果对不对」。
-- **首见静默有代价。** 一次运行若恰好在两次轮询之间完成、且日志随后被清理，那条通知永远收不到。一分钟轮询加十五分钟时间窗把概率压得很低，但不是零。
-- **当前没有任何计划任务在运行。** 这套工具在 2026 年 9 至 10 月间于一台 Windows 机器上真实跑过；本仓是可复跑的重建版 —— 路径全部来自 `config.json`，迁移目录后不必再改常量。历史版本把路径写在常量里，搬家后全部失效。
-- **通知可见性取决于系统设置。** 专注助手、发送方开关、策略都能静默吞掉横幅。工具只能记录「调用成功」，不能记录「人看到」。
+- **Windows only.** The application identifier, the task scheduler and the process list are Windows
+  features. On Linux the state machine and the verdict vocabulary carry over unchanged; `cron` and
+  `notify-send` replace the two outer layers.
+- **Local logs only.** A cloud job (Tidy3D, for example) writes its log elsewhere, and needs a separate
+  read-only poller: query task status, never submit or cancel, keep credentials in a local file outside
+  any repository. This repository does not contain that channel.
+- **It does not judge the physics.** "Did it finish" is a different question from "is the result right".
+- **First-sight silence has a cost.** If a run finishes between two polls and its log is then removed,
+  that notification never arrives. One-minute polling plus a fifteen-minute window makes this
+  unlikely, not impossible.
+- **No scheduled task is registered by this repository.** The tool ran for real on one Windows machine
+  between September and October 2026; this repository is a rebuild that can be re-run — every path
+  comes from `config.json`, so moving the directory no longer breaks it. The historical version kept
+  paths in constants and died when the folder moved.
+- **Whether a toast is visible depends on system settings.** Focus assist, the per-sender switch and
+  policy can all swallow it. The tool can record "the call succeeded"; it cannot record "a person saw it".
 
-## 引用
+## Troubleshooting
 
-仓库内 `CITATION.cff` 是本仓的引用信息。归档编号（DOI）在第一次正式发布后由存档服务生成，届时会写回该文件；
-在此之前，本仓没有可引用的编号，引用时请写明仓库地址与访问日期。
+| Symptom | What it means |
+|---|---|
+| `no event (engines_alive=…, logs_watched=0)` | `root` or `watch_subdir` in `config.json` does not point at the logs |
+| Task shows *Last Result 0*, nothing ever runs | the launcher's heartbeat line is stale — see "wedged-task fingerprint" above, and check the `.cmd` kept its Windows line endings |
+| `Last Result 267009` with `State: Running` | an instance is wedged; end it, then trigger once by hand |
+| Toast log full of `OK`, screen empty | the notification was blocked by the system, not by the script |
 
-问题与建议走仓库的 issue。这是一个个人工具，回复不保证时效；如果你改了判定词表去适配另一款求解器，
-把那段词表与它对应的日志原文一起贴出来，比描述现象有用。
+## Citation
+
+`CITATION.cff` holds the citation record. The archive identifier (DOI) is minted by the archiving
+service at the first release and written back into that file; until then this repository has no
+citable identifier, and a citation should name the repository URL and an access date.
+
+Questions and suggestions go to the repository's issues. This is a personal tool and replies are not
+guaranteed to be quick; if you adapt the verdict vocabulary to another solver, paste the vocabulary
+together with the raw log lines it was derived from — that is more useful than a description of the
+symptom.
 
 ## Licence
 
-代码（`*.py`、`*.ps1`、`*.cmd`、`*.json`）为 MIT，见 `LICENSE`。
-本文件与仓库内的说明文字为 CC BY 4.0，见 `LICENSE-docs.md`。
+Code (`*.py`, `*.ps1`, `*.cmd`, `*.json`) is MIT — see `LICENSE`. The written text, including this
+file, is CC BY 4.0 — see `LICENSE-docs.md`.
 
-## English
 
-A one-minute Windows scheduled task plus a file-only state machine. It reads the engine log a
-simulation solver writes itself (`<project>_p0.log`), raises one Chinese toast the first time a run
-is seen to finish, fail or stall, and appends one JSON line per verdict as evidence.
+## 中文摘要
 
-- Windows 10/11; Python 3.8+ (standard library only); PowerShell 5.1.
-- It never queries the solver, never judges whether a result is converged or correct, and never
-  submits or cancels a cloud task.
-- Verdict vocabulary lives in `sentinel/sentinel.py`; `Auto Shutoff` is a threshold printed on every
-  progress line and is not a completion marker, and a finished run may stop at 99.4%.
-- `_selftest_kit.ps1` reproduces the seven assertions in a throw-away sandbox under `%TEMP%`;
-  `RESULT: ALL PASS` is the expected output.
-- No scheduled task is registered by this repository, and nothing here is a claim about any
-  machine currently running it.
+一分钟跑一次的 Windows 计划任务，加一份只依赖文件的判定状态机：读仿真器自己写下的引擎日志
+（`<project>_p0.log`），在**跑完／跑挂／卡住**第一次出现时推一条通知，并把每次判定追加成一行 JSON 作为证据。
+完整说明以英文写在上文；这一段是同一件事的要点。
 
-Code is MIT; the prose in this README is CC BY 4.0.
+- **平台**：Windows 10 / 11；Python 3.8 以上（只用标准库）；PowerShell 5.1（系统自带）。
+- **三条判据**：只认文件不猜；只报转变不报轮询；只认产物不认回显。
+- **不做什么**：不查询求解器、不判断结果是否正确、不提交或取消任何云端任务。
+- **两处容易写错的地方**：`Auto Shutoff` 是自动关断阈值，不是完成标记；完成行可能停在 99.4%，
+  所以「等到 100%」也不成立。错误词必须锚定匹配，否则正常日志里的 `error` / `cannot` 会把跑完的任务判成失败。
+- **自测**：`powershell -ExecutionPolicy Bypass -File _selftest_kit.ps1`，七项断言，期望 `RESULT: ALL PASS`。
+- **本仓不注册任何计划任务**，也不表示有任何机器正在运行它。
+- **许可**：代码 MIT（`LICENSE`），说明文字 CC BY 4.0（`LICENSE-docs.md`）。
