@@ -1,8 +1,10 @@
 # sim-sentinel
 
-One Windows scheduled task and a small record per log file: read the engine log a simulation solver
-writes itself, and raise **one** toast the first time a run is seen to finish, fail or stall.
-Every verdict is appended to disk as a single JSON line, so "did it tell me last night?" has an answer.
+When a simulation runs in the background — launched by a script, a batch job, or an agent — the progress
+bar belongs to that process, not to you. The log keeps being written; you just never see it. This is a
+one-minute Windows scheduled task that reads that log and raises **one** toast the first time a run is
+seen to finish, fail or stall. Every verdict is appended to disk as a single JSON line, so "did it tell
+me last night?" has an answer.
 
 ![license](https://img.shields.io/badge/license-MIT-blue)
 ![python](https://img.shields.io/badge/python-3.8%2B-blue)
@@ -12,7 +14,8 @@ Every verdict is appended to disk as a single JSON line, so "did it tell me last
 
 **Who this is for.** Anyone running long local simulations — Lumerical FDTD or MODE, or any solver
 that writes progress lines to a log — on a laptop, without a cluster and without wanting to install a
-monitoring stack.
+monitoring stack. That includes runs started by a script, a batch job or an agent, and runs left alone
+with the lid closed.
 
 **What it does not do.** It does not query the solver, does not judge whether a result is converged,
 energy-conserving or correct, and does not submit or cancel a cloud task. It answers one question:
