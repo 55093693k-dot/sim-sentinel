@@ -191,6 +191,26 @@ Each number carries the conditions it was taken under; without them the number m
 - **Whether a toast is visible depends on system settings.** Focus assist, the per-sender switch and
   policy can all swallow it. The tool can record "the call succeeded"; it cannot record "a person saw it".
 
+## Cloud solvers (Tidy3D and similar)
+
+This tool watches a **local** log file. A cloud job does not write one: the solver runs on the
+provider's side, and the local process only shows a progress bar. In tidy3d 2.11.2 — read from the
+installed package, not from a run — the client's console output is a rich progress task, and the
+authoritative state is the task's `status` field (`queued → preprocess → running → postprocess →
+success / error`), reachable only through the SDK, with an API key.
+
+So for a cloud run the honest options are:
+
+1. redirect the client's output to a file and point `log_glob` at it — workable, but you are parsing a
+   progress bar rather than a log line, so the vocabulary is fragile;
+2. poll the task status read-only through the SDK — the right signal, but it needs the `tidy3d`
+   package and a credential, which is exactly what this repository is built to avoid.
+
+This repository ships neither. What it contributes is the state machine: five fields, first-sighting
+silence, a stall criterion, one notification per transition. All of that ports to a status poller
+unchanged. Whether such a port should exist is a fair question, and the answer belongs to whoever
+would use it.
+
 ## Troubleshooting
 
 | Symptom | What it means |
