@@ -34,44 +34,7 @@ Three rules; every line of code traces to one of them.
 | One message per run | Each log file has a small record remembering what was already announced. One run produces exactly one notification, however often it polls. |
 | Proof it ran, not the program's own claim | A printed "success", a fresh *Last Run Time* and an exit code of 0 are not proof. A heartbeat timestamp, the output file's modification time and an append-only event record are. |
 
-## Why the verdict is a pure function
-
-`classify()` takes the log tail, the process state, the file size and the previous size, and returns
-three things: the verdict, the updated stall counter, and **the evidence that produced the verdict**.
-It does no I/O, reads no clock and mutates no state, which is why its tests run on any operating
-system — no Windows, no PowerShell, no solver:
-
-```
-python -m unittest discover -s tests -v      # 14 tests, expected: OK
-```
-
-The two lists that decide everything are **data**, not code. `sentinel/config.json` may replace either
-of them with whole regex fragments, so pointing the tool at another solver is a configuration change
-rather than a code change:
-
-```json
-"done_patterns":  ["solver speed", "overall\\s+\\w+\\s+run time", "simulation completed"],
-"error_patterns": ["^\\s*error\\s*:", "^\\s*fatal", "error code\\s+\\d+"]
-```
-
-When a verdict looks wrong, `--explain` prints the matching lines instead of asking you to believe it:
-
-```
-$ python sentinel/sentinel.py --explain D:\SimWorkbench\sim\runA\projC_p0.log
-log      : D:\SimWorkbench\sim\runA\projC_p0.log
-size     : 162  (previous -1)
-alive    : False
-verdict  : FAILED
-  done    no closing summary line
-  error   matched 'Error:'
-  alive   False -- no engine process
-```
-
-Every raised event carries the same evidence in its `why` field, so `logs/events.jsonl` answers
-"why did it tell me that" months later without rerunning anything.
-
-
-### What one poll does
+## What one poll does
 
 1. The scheduled task fires and calls the launcher (a batch file).
 2. The launcher writes one heartbeat line into `logs\` before anything else.
@@ -84,6 +47,21 @@ Every raised event carries the same evidence in its `why` field, so `logs/events
 
 Nothing stays resident, and there is no background service. When nothing new has appeared, it does not even read the process list.
 
+## Check it, do not trust it
+
+The verdict is one function that takes text and facts and returns the verdict plus the evidence that
+produced it — no I/O, no clock, no state. So its 14 tests run anywhere, Windows or not:
+
+```
+python -m unittest discover -s tests -v      # 14 tests, expected: OK
+```
+
+The two pattern lists live in `config.json`, so pointing the tool at another solver is a configuration
+change. When a verdict looks wrong, `--explain <log>` prints which rule matched and which text it
+matched; every event carries the same note in its `why` field, so `logs/events.jsonl` can answer "why
+did it tell me that" months later.
+
+
 ## What it costs
 
 Measured on the machine that produced this repository (2026-10-31, same code, conda base vs a
@@ -95,12 +73,10 @@ python.org 3.14 install):
 | 500 finished logs | 1.7–3.4 s | same |
 | 500 unfinished logs (reads the process list once) | 4.2–4.6 s | same |
 
-- **Memory is not held.** A short-lived process starts each minute, peaks in the tens of megabytes
-  and exits; while it is not running it occupies nothing.
-- **The cost barely grows with the number of logs.** 500 logs cost under a second more than none;
-  the fixed part is interpreter start-up plus, when needed, one read of the process list.
-- **The interpreter matters most.** The same script peaks at 15 MB under python.org 3.14 and 48 MB
-  under a miniconda base environment — that is the one line worth changing in `sentinel_run.cmd`.
+- **Memory is not held, and the cost barely grows with the number of logs.** A process starts, uses
+  tens of megabytes and exits; 500 logs cost under a second more than none. The interpreter is the one
+  thing that matters — the same script peaks at 15 MB under python.org 3.14 and 48 MB under a miniconda
+  base environment, which is the single line worth changing in `sentinel_run.cmd`.
 
 On disk only two things grow: the state record (about 88 KB for 500 logs) and the event record
 (one line per notification).
@@ -143,15 +119,10 @@ sim\gc_taper\gc_taper_p0.log
 
 ![Example toast](docs/toast-example.png)
 
-> *How the toast looks on the machine named in the test: title line = verdict + log file name,
-> second line = elapsed time and the last progress value, third line = the log path. The sender is
-> shown as Windows PowerShell because the tool reuses that built-in app identifier — nothing is
-> installed or registered.*
->
-> *What the image does not show: it came from a manual poll of a demo directory, not from a scheduled
-> trigger; `elapsed 4s` is that demo run, not a typical FDTD run; and no judgement about the physics is
-> implied — the tool reports state transitions only. Whether a toast is visible still depends on the
-> system's notification settings.*
+> *The toast as it appears on the machine named in the test. The sender reads Windows PowerShell
+> because the tool reuses that built-in app identifier — nothing is installed. `elapsed 4s`
+> belongs to a demo run, not to a production run; visibility still depends on the system's
+> notification settings.*
 
 One line of evidence, appended, never rewritten:
 
@@ -228,23 +199,11 @@ Each number carries the conditions it was taken under; without them the number m
 
 ## Cloud solvers (Tidy3D and similar)
 
-This tool watches a **local** log file. A cloud job does not write one: the solver runs on the
-provider's side, and the local process only shows a progress bar. In tidy3d 2.11.2 — read from the
-installed package, not from a run — the client's console output is a rich progress task, and the
-authoritative state is the task's `status` field (`queued → preprocess → running → postprocess →
-success / error`), reachable only through the SDK, with an API key.
-
-So for a cloud run the honest options are:
-
-1. redirect the client's output to a file and point `log_glob` at it — workable, but you are parsing a
-   progress bar rather than a log line, so the vocabulary is fragile;
-2. poll the task status read-only through the SDK — the right signal, but it needs the `tidy3d`
-   package and a credential, which is exactly what this repository is built to avoid.
-
-This repository ships neither. What it contributes is the record-keeping part: five fields per log,
-silence the first time a log is seen, a stall test that needs several unchanged polls, one notification
-per change. All of that ports to a status poller unchanged. Whether such a port should exist is a fair
-question, and the answer belongs to whoever would use it.
+A cloud job writes no local log: the solver runs on the provider's side, the client shows a progress
+bar, and the authoritative state is the task's `status` (queued → … → success / error), reachable only
+through the SDK with a key. So this repository does not cover cloud runs — the record-keeping part would
+port to a read-only status poller unchanged, but that port needs a dependency and a credential, which is
+what this tool exists to avoid.
 
 ## Troubleshooting
 
@@ -271,19 +230,3 @@ description of the symptom.
 
 Code (`*.py`, `*.ps1`, `*.cmd`, `*.json`) is MIT — see `LICENSE`. The written text, including this
 file, is CC BY 4.0 — see `LICENSE-docs.md`.
-
-
-## 中文摘要
-
-一分钟跑一次的 Windows 计划任务，加一份只依赖文件的判定状态机：读仿真器自己写下的引擎日志
-（`<project>_p0.log`），在**跑完／跑挂／卡住**第一次出现时推一条通知，并把每次判定追加成一行 JSON 作为证据。
-完整说明以英文写在上文；这一段是同一件事的要点。
-
-- **平台**：Windows 10 / 11；Python 3.8 以上（只用标准库）；PowerShell 5.1（系统自带）。
-- **三条判据**：只认文件不猜；只报转变不报轮询；只认产物不认回显。
-- **不做什么**：不查询求解器、不判断结果是否正确、不提交或取消任何云端任务。
-- **两处容易写错的地方**：`Auto Shutoff` 是自动关断阈值，不是完成标记；完成行可能停在 99.4%，
-  所以「等到 100%」也不成立。错误词必须锚定匹配，否则正常日志里的 `error` / `cannot` 会把跑完的任务判成失败。
-- **自测**：`powershell -ExecutionPolicy Bypass -File _selftest_kit.ps1`，七项断言，期望 `RESULT: ALL PASS`。
-- **本仓不注册任何计划任务**，也不表示有任何机器正在运行它。
-- **许可**：代码 MIT（`LICENSE`），说明文字 CC BY 4.0（`LICENSE-docs.md`）。
