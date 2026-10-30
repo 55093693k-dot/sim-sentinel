@@ -157,7 +157,7 @@ Each number carries the conditions it was taken under; without them the number m
 | logs covered per poll | 503 files | health report of 2026-10-22 09:15 |
 | heartbeat continuity | 13 consecutive minute timestamps (15:22:02 → 15:34:02) | that machine, unattended |
 | end-to-end self-test | 7/7 assertions | 2026-10-29 and 2026-10-31, temporary directory |
-| verdict unit tests | 14 pass | 2026-10-31, local Python 3.13; the same command runs in CI on Ubuntu for 3.9 / 3.10 / 3.12 |
+| verdict unit tests | 14 pass | 2026-10-31, local Python 3.13; the same command runs in CI on Ubuntu for 3.10 and 3.12 |
 | wedged-task fingerprint | `State=Running` + `Last Result=267009` | 0x00041301, an instance still running |
 
 ## Limitations and known defects
