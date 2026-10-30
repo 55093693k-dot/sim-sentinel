@@ -1,0 +1,22 @@
+# Bytecode and caches: these must never enter an archived release.
+__pycache__/
+*.py[cod]
+
+# Local configuration and everything the tool writes at run time.
+# config.example.json is the shipped template; config.json is yours.
+sentinel/config.json
+logs/
+state.json
+events.jsonl
+toast.log
+sentinel_stdout.txt
+_toast_msg.txt
+sentinel.pause
+
+# Simulation projects and their engine logs are results, not dependencies:
+# they are large, machine-specific, and never needed to run the sentinel.
+sim/
+*.fsp
+*.lms
+*_p0.log
+*.log

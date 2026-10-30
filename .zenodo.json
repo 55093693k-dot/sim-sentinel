@@ -1,0 +1,27 @@
+{
+  "title": "sim-sentinel: a one-minute Windows sentinel that reads a simulation solver's own engine log and reports the transition to finished, failed or stalled",
+  "description": "<p><strong>Scope -- carry this with any number you quote.</strong> A one-minute Windows scheduled task plus a file-only state machine. It reads the engine log a simulation solver writes itself (<code>&lt;project&gt;_p0.log</code>), raises one Chinese toast the first time a run is seen to finish, fail or stall, and appends one JSON line per verdict as evidence.</p><p>Three properties make the verdicts usable: evidence only (no log, no verdict), transitions only (one notification per run regardless of polling rate), and evidence of execution rather than proof by echo (heartbeat timestamp, product modification time, append-only event record).</p><p>The tool never queries the solver and does not judge whether a result is converged, energy-conserving or correct; those remain with the solver's own criteria and the user's review. It covers Windows only, and local engine logs only: a cloud job needs a separate read-only poller that never submits or cancels a task. No scheduled task is registered by this repository, and nothing here states that any machine is running it. The readings recorded in the README (rule cases 6/6, a replay of 77 historical logs, 503 logs per poll, 13 consecutive heartbeat minutes, 7/7 end-to-end assertions) each carry their own date and machine.</p><p><strong>Licence.</strong> Code is MIT; the written text is CC BY 4.0. That split is recorded in CITATION.cff and in LICENSE. This record uses &quot;Other (Open)&quot; because the licence field holds one identifier and cannot express the split.</p>",
+  "upload_type": "software",
+  "access_right": "open",
+  "license": "other-open",
+  "version": "v1.0.0",
+  "language": "zho",
+  "keywords": [
+    "simulation log watcher",
+    "Windows toast notification",
+    "scheduled task",
+    "Lumerical",
+    "FDTD",
+    "EME",
+    "engineering workflow",
+    "evidence only",
+    "\u4eff\u771f\u76d1\u63a7",
+    "\u4efb\u52a1\u72b6\u6001\u901a\u77e5"
+  ],
+  "creators": [
+    {
+      "name": "Chan, King Ho",
+      "orcid": "0009-0002-0435-2030"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+cff-version: 1.2.0
+message: >-
+  If you use this repository, cite it as below, together with the access date. The scope note is
+  part of the citation: this tool reports state transitions only.
+title: >-
+  sim-sentinel: a one-minute Windows sentinel that reads a simulation solver's own engine log and
+  reports the transition to finished, failed or stalled
+abstract: >-
+  A one-minute Windows scheduled task plus a file-only state machine. It reads the engine log a
+  simulation solver writes itself (`<project>_p0.log`), raises one Chinese toast the first time a
+  run is seen to finish, fail or stall, and appends one JSON line per verdict as evidence.
+
+
+  Three properties are what make the verdicts usable: evidence only (no log, no verdict), transitions
+  only (one notification per run regardless of polling rate), and evidence of execution rather than
+  proof by echo (heartbeat timestamp, product modification time, append-only event record).
+
+
+  SCOPE -- this is part of the citation. The tool never queries the solver and does not judge whether
+  a result is converged, energy-conserving or correct; those remain with the solver's own criteria
+  and the user's review. It covers Windows only, and local engine logs only: a cloud job needs a
+  separate read-only poller that never submits or cancels a task. No scheduled task is registered by
+  this repository, and nothing here states that any machine is running it. The readings recorded in
+  README (rule cases 6/6, a replay of 77 historical logs, 503 logs per poll, 13 consecutive heartbeat
+  minutes, 7/7 end-to-end assertions) each carry their own date and machine.
+authors:
+  - family-names: "Chan"
+    given-names: "King Ho"
+    orcid: "https://orcid.org/0009-0002-0435-2030"
+type: software
+version: "v1.0.0"
+# An SPDX *expression* is not accepted by the Citation File Format schema; it takes identifiers
+# only, as a single string or as an array, and an array means "or".  Code is MIT, prose is CC BY 4.0.
+license:
+  - "MIT"
+  - "CC-BY-4.0"
+keywords:
+  - simulation log watcher
+  - Windows toast notification
+  - scheduled task
+  - Lumerical
+  - FDTD
+  - EME
+  - engineering workflow
+  - evidence only
+# DOI: none yet. The archive number is minted by the archiving service on the first release and is
+# written back into this file and the README at that point; until then this repository has no
+# citable identifier, only a URL and an access date.

@@ -1,0 +1,8 @@
+{
+  "root": "D:\\SimWorkbench",
+  "watch_subdir": "sim",
+  "log_glob": "**/*_p0.log",
+  "tail_bytes": 6000,
+  "mtime_window_s": 900,
+  "stall_after": 3
+}
