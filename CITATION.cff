@@ -7,7 +7,7 @@ title: >-
   reports the transition to finished, failed or stalled
 abstract: >-
   A one-minute Windows scheduled task plus a file-only state machine. It reads the engine log a
-  simulation solver writes itself (`<project>_p0.log`), raises one Chinese toast the first time a
+  simulation solver writes itself (`<project>_p0.log`), raises one toast the first time a
   run is seen to finish, fail or stall, and appends one JSON line per verdict as evidence.
 
 
@@ -28,7 +28,6 @@ authors:
     given-names: "King Ho"
     orcid: "https://orcid.org/0009-0002-0435-2030"
 type: software
-version: "1.0.1"
 # An SPDX *expression* is not accepted by the Citation File Format schema; it takes identifiers
 # only, as a single string or as an array, and an array means "or".  Code is MIT, prose is CC BY 4.0.
 license:
@@ -47,4 +46,4 @@ keywords:
   - evidence only
 # DOI: the *version* DOI of the archived release v1.0.1 (2026-10-30), and the *concept* DOI that
 # covers every version of this repository, which is 10.5281/zenodo.23817306.
-doi: "10.5281/zenodo.23817307"
+doi: "10.5281/zenodo.23817306"

@@ -216,10 +216,12 @@ what this tool exists to avoid.
 
 ## Citation
 
-Archived: **v1.0.1**, DOI **[10.5281/zenodo.23817307](https://doi.org/10.5281/zenodo.23817307)**.
-The concept DOI, which always resolves to the latest archived version, is
-**[10.5281/zenodo.23817306](https://doi.org/10.5281/zenodo.23817306)**. `CITATION.cff` carries the
-same record.
+Cite the **concept DOI**, which always resolves to the newest archived version:
+
+**[10.5281/zenodo.23817306](https://doi.org/10.5281/zenodo.23817306)** — `CITATION.cff` carries it.
+
+Version DOIs (one per release, frozen) are listed on that record page; name the version in the text if
+a number matters. The archived snapshot for a given version is the repository at that release tag.
 
 Questions and suggestions go to the repository's issues or Discussions. This is a personal tool and
 replies are not guaranteed to be quick; if you adapt the verdict vocabulary to another solver, paste
