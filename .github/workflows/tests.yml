@@ -1,0 +1,27 @@
+name: verdict tests
+
+# The verdict is a pure function, so its tests run anywhere -- no Windows, no
+# PowerShell, no solver. Only the toast, the scheduled task and the process
+# table are platform-specific; those are covered by _selftest_kit.ps1 instead.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: show the interpreter
+        run: python -c "import sys, platform; print(sys.version); print(platform.platform())"
+      - name: run the verdict tests
+        run: python -m unittest discover -s tests -v

@@ -7,6 +7,7 @@ Every verdict is appended to disk as a single JSON line, so "did it tell me last
 ![license](https://img.shields.io/badge/license-MIT-blue)
 ![python](https://img.shields.io/badge/python-3.8%2B-blue)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-lightgrey)
+[![verdict tests](https://github.com/55093693k-dot/sim-sentinel/actions/workflows/tests.yml/badge.svg)](https://github.com/55093693k-dot/sim-sentinel/actions/workflows/tests.yml)
 
 **Who this is for.** Anyone running long local simulations — Lumerical FDTD or MODE, or any solver
 that writes progress lines to a log — on a laptop, without a cluster and without wanting to install a
@@ -31,6 +32,43 @@ Three rules; every line of code traces to one of them.
 | Evidence only | The tool never asks the solver anything. No log, no verdict. When it cannot read the process table it stays silent instead of guessing. |
 | Transitions only | Each log file carries one state record, remembering the last announced state. One run produces exactly one notification, however often it polls. |
 | Execution evidence, not echo | A printed "success", a fresh *Last Run Time* and an exit code of 0 are not evidence. A heartbeat timestamp, a product modification time and an append-only event record are. |
+
+## Why the verdict is a pure function
+
+`classify()` takes the log tail, the process state, the file size and the previous size, and returns
+three things: the verdict, the updated stall counter, and **the evidence that produced the verdict**.
+It does no I/O, reads no clock and mutates no state, which is why its tests run on any operating
+system — no Windows, no PowerShell, no solver:
+
+```
+python -m unittest discover -s tests -v      # 14 tests, expected: OK
+```
+
+The two lists that decide everything are **data**, not code. `sentinel/config.json` may replace either
+of them with whole regex fragments, so pointing the tool at another solver is a configuration change
+rather than a code change:
+
+```json
+"done_patterns":  ["solver speed", "overall\\s+\\w+\\s+run time", "simulation completed"],
+"error_patterns": ["^\\s*error\\s*:", "^\\s*fatal", "error code\\s+\\d+"]
+```
+
+When a verdict looks wrong, `--explain` prints the matching lines instead of asking you to believe it:
+
+```
+$ python sentinel/sentinel.py --explain D:\SimWorkbench\sim\runA\projC_p0.log
+log      : D:\SimWorkbench\sim\runA\projC_p0.log
+size     : 162  (previous -1)
+alive    : False
+verdict  : FAILED
+  done    no closing summary line
+  error   matched 'Error:'
+  alive   False -- no engine process
+```
+
+Every raised event carries the same evidence in its `why` field, so `logs/events.jsonl` answers
+"why did it tell me that" months later without rerunning anything.
+
 
 ## Quick start
 
@@ -93,9 +131,11 @@ powershell -ExecutionPolicy Bypass -File _selftest_kit.ps1
 It copies the kit into a temporary directory, builds four fake logs, runs the sentinel ten times in
 order and asserts "silent when it should be silent, one notification when it should report". The
 sandbox is deleted afterwards (`-Keep` keeps it); no toast is shown and no real state is touched.
-Expected output:
+When the `tests/` directory is present it also runs the pure verdict tests first. Expected output:
 
 ```
+--- verdict tests ---
+OK
 PASS  finished log, FIRST sight -> silent baseline   expect=0 got=0
 PASS  same log again -> still silent (dedupe)        expect=0 got=0
 PASS  progress only -> no verdict                    expect=0 got=0
@@ -117,6 +157,7 @@ Each number carries the conditions it was taken under; without them the number m
 | logs covered per poll | 503 files | health report of 2026-10-22 09:15 |
 | heartbeat continuity | 13 consecutive minute timestamps (15:22:02 → 15:34:02) | that machine, unattended |
 | end-to-end self-test | 7/7 assertions | 2026-10-29 and 2026-10-31, temporary directory |
+| verdict unit tests | 14 pass | 2026-10-31, local Python 3.13; the same command runs in CI on Ubuntu for 3.9 / 3.10 / 3.12 |
 | wedged-task fingerprint | `State=Running` + `Last Result=267009` | 0x00041301, an instance still running |
 
 ## Limitations and known defects

@@ -4,5 +4,23 @@
   "log_glob": "**/*_p0.log",
   "tail_bytes": 6000,
   "mtime_window_s": 900,
-  "stall_after": 3
+  "stall_after": 3,
+  "done_patterns": [
+    "solver speed",
+    "overall\\s+\\w+\\s+run time",
+    "total simulation time",
+    "simulation completed",
+    "100(?:\\.0+)?\\s*%\\s*complete"
+  ],
+  "error_patterns": [
+    "^\\s*error\\s*:",
+    "^\\s*fatal",
+    "unknown parallel error",
+    "error code\\s+\\d+",
+    "not enough memory",
+    "license error",
+    "could not be started",
+    "aborted"
+  ]
 }
+

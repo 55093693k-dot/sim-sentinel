@@ -10,12 +10,19 @@ WHY IT IS WRITTEN THIS WAY (read before changing anything):
   3. THREE-STATE PROCESS CHECK. alive = True / False / None. None means "cannot
      read the process table" and must NEVER be turned into a verdict.
 
+THE VERDICT ITSELF IS A PURE FUNCTION (`classify`): text in, verdict plus the
+evidence that produced it out. No I/O, no clock, no state. That is what lets
+`tests/test_verdict.py` run the same logic on any operating system, and what
+lets `--explain` print why a log was judged the way it was.
+
 USAGE
-  python sentinel.py --once        one poll (this is what the scheduled task runs)
-  python sentinel.py --loop 30     resident mode
-  python sentinel.py --test        send one test toast and exit
-  python sentinel.py --no-toast    detect + log, notify nothing (dry run)
-  python sentinel.py --all         ignore the mtime window (replay everything)
+  python sentinel.py --once          one poll (what the scheduled task runs)
+  python sentinel.py --loop 30       resident mode
+  python sentinel.py --test          send one test toast and exit
+  python sentinel.py --no-toast      detect + log, notify nothing (dry run)
+  python sentinel.py --all           ignore the mtime window (replay everything)
+  python sentinel.py --explain [LOG] print the verdict and the matching lines for
+                                     one log, or for every watched log (read-only)
 
 FILES (relative to the configured root)
   <root>/<watch_subdir>/...        engine logs, scanned recursively
@@ -37,6 +44,9 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG = os.path.join(HERE, "config.json")
 
+#: The verdict vocabulary is DATA, not code: `config.json` may replace either list
+#: with whole regex fragments. Every default below was checked against real logs; a
+#: bare word such as `error` must never appear on its own (see the note below).
 DEFAULTS = {
     "root": r"D:\SimWorkbench",
     "watch_subdir": "sim",
@@ -44,24 +54,24 @@ DEFAULTS = {
     "tail_bytes": 6000,
     "mtime_window_s": 900,
     "stall_after": 3,
+    "done_patterns": [
+        "solver speed",
+        r"overall\s+\w+\s+run time",
+        "total simulation time",
+        "simulation completed",
+        r"100(?:\.0+)?\s*%\s*complete",
+    ],
+    "error_patterns": [
+        r"^\s*error\s*:",
+        r"^\s*fatal",
+        "unknown parallel error",
+        r"error code\s+\d+",
+        "not enough memory",
+        "license error",
+        "could not be started",
+        "aborted",
+    ],
 }
-
-# ---------------------------------------------------------------------------
-# VERDICT VOCABULARY -- these two regexes are the whole "brain" of the tool.
-#
-# 'Auto Shutoff: 0.101703' is printed on EVERY progress line by some Lumerical
-# versions, so it is NOT a completion marker. A finished run is identified by
-# the engine's closing summary line, and it may stop at 99.4% -- so "wait for
-# 100%" does not work either.
-# ---------------------------------------------------------------------------
-DONE_RE = re.compile(r"(solver speed|overall\s+\w+\s+run time|total simulation time|"
-                     r"simulation completed|100(?:\.0+)?\s*%\s*complete)", re.I)
-# Anchored on purpose: benign prose contains 'error' and 'cannot' too, and a bare
-# word match produced FAILED verdicts on runs that had already finished.
-ERR_RE = re.compile(r"(^\s*error\s*:|^\s*fatal|unknown parallel error|error code\s+\d+|"
-                    r"not enough memory|license error|could not be started|aborted)",
-                    re.I | re.M)
-PCT_RE = re.compile(r"(\d+(?:\.\d+)?)\s*%\s*complete", re.I)
 
 
 def load_config():
@@ -85,6 +95,28 @@ TOASTPS1 = os.path.join(HERE, "toast.ps1")
 PAUSE = os.path.join(ROOT, "sentinel.pause")
 POWERSHELL = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"),
                           r"System32\WindowsPowerShell\v1.0\powershell.exe")
+
+
+def build_patterns(done_list, error_list):
+    """Compile the two lists into regexes. An empty list matches nothing."""
+    def _one(items):
+        items = [p for p in (items or []) if p]
+        if not items:
+            return re.compile(r"(?!)")
+        return re.compile("|".join("(?:%s)" % p for p in items), re.I | re.M)
+
+    return _one(done_list), _one(error_list)
+
+
+# 'Auto Shutoff: 0.101703' is printed on EVERY progress line by some Lumerical
+# versions, so it is NOT a completion marker. A finished run is identified by the
+# engine's closing summary line, and it may stop at 99.4% -- so "wait for 100%"
+# does not work either.
+#
+# The error list is anchored on purpose: benign prose contains 'error' and
+# 'cannot' too, and a bare word match produced FAILED verdicts on runs that had
+# already finished.
+DONE_RE, ERR_RE = build_patterns(CFG["done_patterns"], CFG["error_patterns"])
 
 
 def now():
@@ -160,6 +192,76 @@ def watched():
     return glob.glob(os.path.join(WATCH, CFG["log_glob"]), recursive=True)
 
 
+def classify(tail_text, alive, size, prev_size, stall_count, stall_after,
+             done_re=None, err_re=None):
+    """Verdict for ONE log file, from text and facts only.
+
+    Pure on purpose: no file I/O, no clock, no state mutation. Everything that can
+    be wrong about a verdict is decided here, and therefore testable anywhere.
+
+    Returns (status, stall_count, evidence):
+      status       None | "FINISHED" | "FAILED" | "STALLED"
+      stall_count  the counter to store for the next poll
+      evidence     [(rule, detail), ...] in the order the rules were applied
+    """
+    done_re = DONE_RE if done_re is None else done_re
+    err_re = ERR_RE if err_re is None else err_re
+    ev = []
+
+    m = done_re.search(tail_text)
+    if m:
+        ev.append(("done", "matched %r" % m.group(0).strip()))
+        return "FINISHED", stall_count, ev
+    ev.append(("done", "no closing summary line"))
+
+    e = err_re.search(tail_text)
+    if e:
+        ev.append(("error", "matched %r" % e.group(0).strip()))
+    else:
+        ev.append(("error", "no anchored error pattern"))
+
+    if alive is False:
+        ev.append(("alive", "False -- no engine process"))
+        if e:
+            return "FAILED", stall_count, ev
+        stall_count = stall_count + 1 if size == prev_size else 0
+        ev.append(("stall", "size %d, unchanged for %d of %d polls"
+                   % (size, stall_count, stall_after)))
+        if stall_count >= stall_after:
+            return "STALLED", stall_count, ev
+        return None, stall_count, ev
+
+    ev.append(("alive", "None -- cannot read the process table"
+               if alive is None else "True -- an engine is running"))
+    return None, stall_count, ev
+
+
+def explain(arg=None):
+    """Print the verdict and its evidence. Read-only: no toast, no state written."""
+    if arg:
+        targets = [arg]
+    else:
+        targets = watched()[:20]
+        if not targets:
+            print("no logs matched %s under %s" % (CFG["log_glob"], WATCH))
+            return 0
+    st = load_state()
+    alive = engines_alive()
+    for lg in targets:
+        txt, size = tail(lg)
+        rec = st.get(os.path.normcase(lg), {"size": -1, "stall": 0})
+        status, stall, ev = classify(txt, alive, size, rec.get("size", -1),
+                                     rec.get("stall", 0), CFG["stall_after"])
+        print("log      : %s" % lg)
+        print("size     : %d  (previous %s)" % (size, rec.get("size", -1)))
+        print("alive    : %s" % alive)
+        print("verdict  : %s" % (status or "no verdict (state unchanged or unknown)"))
+        for rule, detail in ev:
+            print("  %-7s %s" % (rule, detail))
+        print("")
+    return 0
+
+
 def poll():
     """One detection pass. Returns the events raised."""
     if os.path.exists(PAUSE):
@@ -187,22 +289,12 @@ def poll():
                 last_line = line.strip()
                 break
         pct = ""
-        hits = list(PCT_RE.finditer(txt))
+        hits = list(re.finditer(r"(\d+(?:\.\d+)?)\s*%\s*complete", txt, re.I))
         if hits:
             pct = hits[-1].group(1) + "%"
-        done = bool(DONE_RE.search(txt))
-        err = bool(ERR_RE.search(txt))
 
-        status = None
-        if done:
-            status = "FINISHED"
-        elif alive is False and err:
-            status = "FAILED"
-        elif alive is False:
-            # a stall verdict needs a CHANGE criterion, not one observation
-            rec["stall"] = rec.get("stall", 0) + 1 if size == rec.get("size") else 0
-            if rec["stall"] >= CFG["stall_after"]:
-                status = "STALLED"
+        status, rec["stall"], ev = classify(txt, alive, size, rec.get("size", -1),
+                                            rec.get("stall", 0), CFG["stall_after"])
         rec["size"] = size
         st[key] = rec
 
@@ -226,10 +318,11 @@ def poll():
             title = "仿真" + zh + "：" + name
             body = "耗时 " + (elapsed or "未观测") + ("　进度 " + pct if pct else "") + "\n" + rel
             rc = notify(title, body)
-            ev = {"ts": now(), "kind": status, "log": rel, "pct": pct,
-                  "last": last_line[:200], "toast_rc": rc}
-            events.append(ev)
-            append(EVENTS, ev)
+            why = "; ".join("%s: %s" % (r, d) for r, d in ev)[:200]
+            event = {"ts": now(), "kind": status, "log": rel, "pct": pct,
+                     "last": last_line[:200], "toast_rc": rc, "why": why}
+            events.append(event)
+            append(EVENTS, event)
     try:
         save_state(st)
     except Exception as e:
@@ -243,6 +336,14 @@ def main():
         rc = notify("哨兵自检 ✓", "toast 通路正常；计划任务已启用。\n" + now())
         append(EVENTS, {"ts": now(), "kind": "TEST", "toast_rc": rc})
         print("test toast rc=%s" % rc)
+        return 0
+    if "--explain" in args:
+        i = args.index("--explain")
+        rest = [a for a in args[i + 1:] if not a.startswith("--")]
+        return explain(rest[0] if rest else None)
+    if not os.path.isdir(WATCH):
+        print("%s watch directory does not exist: %s" % (now(), WATCH))
+        print("  fix `root` / `watch_subdir` in %s" % CONFIG)
         return 0
     if "--loop" in args:
         i = args.index("--loop")
@@ -263,5 +364,6 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
 
 

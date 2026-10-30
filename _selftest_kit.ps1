@@ -44,6 +44,23 @@ function Check($name, $expect, $got) {
     "{0}  {1,-52} expect={2} got={3}" -f $(if ($ok) { 'PASS' } else { 'FAIL' }), $name, $expect, $got
 }
 
+# The verdict tests are pure Python, so they run on any OS. They are skipped when
+# tests/ is absent -- a reader may have copied only sentinel/ and launch/.
+$tests = Join-Path $src 'tests'
+if (Test-Path $tests) {
+    Copy-Item -Recurse $tests $k
+    $utlog  = Join-Path $t 'unittest.txt'
+    $strict = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'      # unittest writes its report to stderr
+    & $py -m unittest discover -s (Join-Path $k 'tests') *> $utlog
+    $ErrorActionPreference = $strict
+    $unit = Get-Content -LiteralPath $utlog -Raw
+    if ($unit -notmatch 'OK') { $script:fail++ }
+    ""
+    "--- verdict tests ---"
+    ($unit.Trim() -split "`r?`n")[-1]
+}
+
 $done = "99.3998% complete. Max time remaining: 3 hrs`r`ntotal FDTD solver speed on 10 processes (Mnodes/s): 214.504635`r`n"
 $prog = "2.00031% complete. Elapsed simulation time: 1.2e-13 secs. Max time remaining: 41 hrs. Auto Shutoff: 0.101703`r`n"
 $err  = "Error: there was an unknown parallel error. The error code is 10, the process number is 0`r`n"
