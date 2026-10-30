@@ -1,6 +1,6 @@
 # sim-sentinel
 
-One Windows scheduled task, one file-only state machine: read the engine log a simulation solver
+One Windows scheduled task and a small record per log file: read the engine log a simulation solver
 writes itself, and raise **one** toast the first time a run is seen to finish, fail or stall.
 Every verdict is appended to disk as a single JSON line, so "did it tell me last night?" has an answer.
 
@@ -28,11 +28,11 @@ available is the log file, and the only useful behaviour is to watch it from out
 
 Three rules; every line of code traces to one of them.
 
-| Rule | Meaning |
+| What it does | Why it is written that way |
 |---|---|
-| Evidence only | The tool never asks the solver anything. No log, no verdict. When it cannot read the process table it stays silent instead of guessing. |
-| Transitions only | Each log file carries one state record, remembering the last announced state. One run produces exactly one notification, however often it polls. |
-| Execution evidence, not echo | A printed "success", a fresh *Last Run Time* and an exit code of 0 are not evidence. A heartbeat timestamp, a product modification time and an append-only event record are. |
+| It only reads files | The tool never asks the solver anything. No log, no verdict. When it cannot read the process list it stays silent instead of guessing. |
+| One message per run | Each log file has a small record remembering what was already announced. One run produces exactly one notification, however often it polls. |
+| Proof it ran, not the program's own claim | A printed "success", a fresh *Last Run Time* and an exit code of 0 are not proof. A heartbeat timestamp, the output file's modification time and an append-only event record are. |
 
 ## Why the verdict is a pure function
 
@@ -207,10 +207,10 @@ So for a cloud run the honest options are:
 2. poll the task status read-only through the SDK — the right signal, but it needs the `tidy3d`
    package and a credential, which is exactly what this repository is built to avoid.
 
-This repository ships neither. What it contributes is the state machine: five fields, first-sighting
-silence, a stall criterion, one notification per transition. All of that ports to a status poller
-unchanged. Whether such a port should exist is a fair question, and the answer belongs to whoever
-would use it.
+This repository ships neither. What it contributes is the record-keeping part: five fields per log,
+silence the first time a log is seen, a stall test that needs several unchanged polls, one notification
+per change. All of that ports to a status poller unchanged. Whether such a port should exist is a fair
+question, and the answer belongs to whoever would use it.
 
 ## Troubleshooting
 
