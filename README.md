@@ -223,10 +223,10 @@ Cite the **concept DOI**, which always resolves to the newest archived version:
 Version DOIs (one per release, frozen) are listed on that record page; name the version in the text if
 a number matters. The archived snapshot for a given version is the repository at that release tag.
 
-Questions and suggestions go to the repository's issues or Discussions. This is a personal tool and
-replies are not guaranteed to be quick; if you adapt the verdict vocabulary to another solver, paste
-the vocabulary together with the raw log lines it was derived from — that is more useful than a
-description of the symptom.
+Questions and suggestions go to **[Discussions](https://github.com/55093693k-dot/sim-sentinel/discussions)**
+or the issue tracker. This is a personal tool and replies are not guaranteed to be quick; if you adapt
+the verdict vocabulary to another solver, paste the vocabulary together with the raw log lines it was
+derived from — that is more useful than a description of the symptom.
 
 ## Licence
 
