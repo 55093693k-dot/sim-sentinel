@@ -16,7 +16,9 @@ local text logs.
 
 ![Example notification](docs/toast-example.png)
 
-*A demonstration notification. Windows notification settings control whether the banner is visible.*
+*A demonstration notification. Progress may remain below 100% when the solver's own stopping condition
+is met: this example ends at 99.3998% while the closing summary line marks completion. Windows
+notification settings control whether the banner is visible.*
 
 ## Quick start
 
@@ -104,6 +106,8 @@ Each check starts Python, reads recent logs, saves their state, and exits. Norma
 6 KB of each log is read. Nothing stays resident between checks.
 
 This is not a continuously updating progress bar. Detailed percentages remain in the original log.
+A recorded percentage can stay below 100% even for a completed run; `FINISHED` is taken from the
+solver's closing summary line, not from the percentage.
 
 ## Resource use
 
