@@ -6,23 +6,18 @@ title: >-
   sim-sentinel: a one-minute Windows sentinel that reads a simulation solver's own engine log and
   reports the transition to finished, failed or stalled
 abstract: >-
-  A one-minute Windows scheduled task plus a file-only state machine. It reads the engine log a
-  simulation solver writes itself (`<project>_p0.log`), raises one toast the first time a
-  run is seen to finish, fail or stall, and appends one JSON line per verdict as evidence.
+  sim-sentinel reads local simulation logs once a minute on Windows and sends a notification when
+  a run finishes, fails, or stops moving. It reports state changes rather than sending a notification
+  every minute. The included rules target Lumerical FDTD/EME `<project>_p0.log` files and can be
+  adapted to other local text logs. Python uses only the standard library.
 
 
-  Three properties are what make the verdicts usable: evidence only (no log, no verdict), transitions
-  only (one notification per run regardless of polling rate), and evidence of execution rather than
-  proof by echo (heartbeat timestamp, product modification time, append-only event record).
-
-
-  SCOPE -- this is part of the citation. The tool never queries the solver and does not judge whether
-  a result is converged, energy-conserving or correct; those remain with the solver's own criteria
-  and the user's review. It covers Windows only, and local engine logs only: a cloud job needs a
-  separate read-only poller that never submits or cancels a task. No scheduled task is registered by
-  this repository, and nothing here states that any machine is running it. The readings recorded in
-  README (rule cases 6/6, a replay of 77 historical logs, 503 logs per poll, 13 consecutive heartbeat
-  minutes, 7/7 end-to-end assertions) each carry their own date and machine.
+  SCOPE -- this is part of the citation. The tool supports Windows and local text logs only; cloud
+  jobs are not covered. It does not submit or cancel simulations, and it does not judge convergence,
+  energy balance, physics, or the correctness of results. The first sighting of a log establishes a
+  silent baseline. Notification visibility depends on Windows settings. The process check recognizes
+  names ending in `-engine.exe`; other process names require a code change for failure and stall
+  detection.
 authors:
   - family-names: "Chan"
     given-names: "King Ho"
@@ -44,6 +39,5 @@ keywords:
   - EME
   - engineering workflow
   - evidence only
-# DOI: the *version* DOI of the archived release v1.0.1 (2026-10-30), and the *concept* DOI that
-# covers every version of this repository, which is 10.5281/zenodo.23817306.
+# The concept DOI covers every archived version and resolves to the latest one.
 doi: "10.5281/zenodo.23817306"

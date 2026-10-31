@@ -97,7 +97,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\launch\register_tasks.ps1 
 | Status | Evidence |
 |---|---|
 | `FINISHED` | A configured completion line appears in the log |
-| `FAILED` | A configured error line appears in the log |
+| `FAILED` | A configured error line appears and no engine process is found |
 | `STALLED` | The log stops growing for the configured number of checks and no engine process is found |
 
 Each check starts Python, reads recent logs, saves their state, and exits. Normally only the last
@@ -132,10 +132,14 @@ Change `log_glob`, `done_patterns`, and `error_patterns` in `config.json` using 
 Avoid matching a bare word such as `error`: normal prose can contain it. `Auto Shutoff` is not a
 completion marker in the Lumerical logs for which the defaults were written.
 
+The process check recognizes executable names ending in `-engine.exe`. Completion and error rules
+can be adapted in the configuration, but a solver with a different process name also requires a
+code change for `FAILED` and `STALLED` detection.
+
 See which rules match a log without changing state or sending a notification:
 
 ```powershell
-python .\sentinel\sentinel.py --explain path\to\run_p0.log
+python .\sentinel\sentinel.py --explain D:\SimWorkbench\sim\runA\project_p0.log
 ```
 
 ## Limitations
@@ -160,5 +164,5 @@ Questions and suggestions: **[Discussions](https://github.com/55093693k-dot/sim-
 
 ## Licence
 
-Code (`*.py`, `*.ps1`, `*.cmd`, `*.json`) is MIT; written text is CC BY 4.0. See `LICENSE` and
-`LICENSE-docs.md`.
+Source code, tests, and automation scripts are MIT; written documentation and the screenshot are
+CC BY 4.0. See `LICENSE` and `LICENSE-docs.md`.
