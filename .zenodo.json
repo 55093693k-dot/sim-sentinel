@@ -1,5 +1,5 @@
 {
-  "title": "sim-sentinel: a one-minute Windows sentinel that reads a simulation solver's own engine log and reports the transition to finished, failed or stalled",
+  "title": "sim-sentinel: Windows notifications for background simulation completion, failure, or stalled progress",
   "description": "<p>sim-sentinel reads local simulation logs once a minute on Windows and sends a notification when a run finishes, fails, or stops moving. It reports state changes rather than sending a notification every minute. The included rules target Lumerical FDTD/EME <code>&lt;project&gt;_p0.log</code> files and can be adapted to other local text logs. Python uses only the standard library.</p><p><strong>Scope.</strong> The tool supports Windows and local text logs only; cloud jobs are not covered. It does not submit or cancel simulations, and it does not judge convergence, energy balance, physics, or the correctness of results. The first sighting of a log establishes a silent baseline. Notification visibility depends on Windows settings. The process check recognizes names ending in <code>-engine.exe</code>; other process names require a code change for failure and stall detection.</p><p><strong>Licence.</strong> Source code, tests, and automation scripts are MIT; written documentation and the screenshot are CC BY 4.0. This record uses &quot;Other (Open)&quot; because the licence field holds one identifier and cannot express the split.</p>",
   "upload_type": "software",
   "access_right": "open",
@@ -19,7 +19,7 @@
   ],
   "creators": [
     {
-      "name": "Chan, King Ho",
+      "name": "Chan, Kingho",
       "orcid": "0009-0002-0435-2030"
     }
   ]

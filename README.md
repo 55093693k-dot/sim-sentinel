@@ -164,5 +164,7 @@ Questions and suggestions: **[Discussions](https://github.com/55093693k-dot/sim-
 
 ## Licence
 
+Copyright (c) 2026 Chan Kingho.
+
 Source code, tests, and automation scripts are MIT; written documentation and the screenshot are
 CC BY 4.0. See `LICENSE` and `LICENSE-docs.md`.

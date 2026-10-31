@@ -1,5 +1,14 @@
 # Licence of the written material
 
+Copyright (c) 2026 Chan Kingho
+
+The written documentation and the screenshot in this repository are licensed under the
+**Creative Commons Attribution 4.0 International License (CC BY 4.0)**.
+To view a copy of this license, visit https://creativecommons.org/licenses/by/4.0/
+
+Attribution: **Chan Kingho, sim-sentinel (2026), CC BY 4.0**, with a link to the
+repository or the archived record when the material is reused.
+
 `LICENSE` (MIT) covers the source code, tests, and automation scripts, including:
 
 - `sentinel/` and `launch/`
