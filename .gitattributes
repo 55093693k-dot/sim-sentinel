@@ -9,6 +9,7 @@
 * text=auto eol=lf
 *.cmd text eol=crlf
 *.ps1 text eol=crlf
+*.vbs text eol=crlf
 
 # A screenshot of the toast goes in docs/. Git detects binary files by itself; this line
 # only makes the intent explicit, so text conversion can never touch it.

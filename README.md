@@ -112,8 +112,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\launch\register_tasks.ps1 
 powershell -NoProfile -ExecutionPolicy Bypass -File .\launch\register_tasks.ps1
 ```
 
-The task is named `Sim_Sentinel_1min`. Changes to `config.json` take effect on the next check; do not
-register again. Remove the task with:
+The task is named `Sim_Sentinel_1min`. It starts `sentinel_run.vbs`, which launches the batch file
+with a hidden window; no console should flash every minute. Changes to `config.json` take effect on
+the next check; do not register again. Remove the task with:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\launch\register_tasks.ps1 -Remove

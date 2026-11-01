@@ -28,9 +28,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $Kit    = Split-Path -Parent $PSScriptRoot
-$Launch = Join-Path $PSScriptRoot 'sentinel_run.cmd'
+$Launch = Join-Path $PSScriptRoot 'sentinel_run.vbs'
+$Wscript = Join-Path $env:SystemRoot 'System32\wscript.exe'
 
 if (-not (Test-Path $Launch)) { throw "launcher not found: $Launch" }
+if (-not (Test-Path $Wscript)) { throw "wscript.exe not found: $Wscript" }
 
 if ($Remove) {
     if ($Preview) { "would unregister: $TaskName"; exit 0 }
@@ -39,8 +41,8 @@ if ($Remove) {
     exit 0
 }
 
-$Action = New-ScheduledTaskAction -Execute 'cmd.exe' `
-            -Argument ('/c ""' + $Launch + '""') `
+$Action = New-ScheduledTaskAction -Execute $Wscript `
+            -Argument ('"' + $Launch + '"') `
             -WorkingDirectory $Kit
 
 $Trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date.AddMinutes(2) `
@@ -51,13 +53,14 @@ $Setting = New-ScheduledTaskSettingsSet `
              -AllowStartIfOnBatteries `
              -DontStopIfGoingOnBatteries `
              -MultipleInstances IgnoreNew `
-             -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
+             -ExecutionTimeLimit (New-TimeSpan -Minutes 5) `
+             -Hidden
 
 if ($Preview) {
     "task     : $TaskName"
-    "action   : cmd.exe /c ""$Launch""   (workdir $Kit)"
+    "action   : $Wscript `"$Launch`"   (workdir $Kit)"
     "trigger  : once at $((Get-Date).Date.AddMinutes(2).ToString('HH:mm')), repeat every 1 min, no end date"
-    "settings : batteries=allowed  instances=IgnoreNew  time_limit=5 min  run_as=current user"
+    "settings : hidden, batteries=allowed, instances=IgnoreNew, time_limit=5 min, run_as=current user"
     "note     : nothing was registered (-Preview)"
     exit 0
 }
