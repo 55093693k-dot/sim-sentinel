@@ -149,6 +149,7 @@ Read the last line of `<root>\logs\toast.log` to see what happened:
 | `custom` | the configured WAV played |
 | `wav` | the system WAV played |
 | `custom-missing+default` | the custom path was wrong; the system WAV played instead |
+| `custom-fail+default` | the custom file existed but could not be played; the system WAV played instead |
 | `beep` or `...+beep` | no WAV could be played; the console beep was used |
 
 A missing or unsupported custom file is not fatal: the tool falls back to the system WAV, then to a
