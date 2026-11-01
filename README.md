@@ -20,7 +20,7 @@ local text logs.
 |---|---|---|
 | **Closing line found**<br><img src="docs/toast-finished.png" alt="FINISHED notification" width="100%"> | **Anchored error, no engine process**<br><img src="docs/toast-failed.png" alt="FAILED notification" width="100%"> | **Log unchanged for the configured polls**<br><img src="docs/toast-stalled.png" alt="STALLED notification" width="100%"> |
 
-Real captures from one Windows test machine. The sender label is chosen by Windows at capture time;
+Real captures from a Windows test machine. The sender label is chosen by Windows at capture time;
 `toast.log` records the actual AUMID. The STALLED image was captured from the notification centre, so
 it shows the time and body but not the sender or log path. The finished example ends at 99.3998%:
 completion comes from the solver's closing summary line, not from the percentage. Whether a banner
