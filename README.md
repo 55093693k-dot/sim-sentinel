@@ -78,6 +78,17 @@ of notifications for old runs.
 The self-test uses temporary files, does not touch real simulations, and must end with
 `RESULT: ALL PASS`. The last command tests the Windows notification separately.
 
+A successful test adds one line to `logs\toast.log`:
+
+```text
+OK  2026-11-01 12:00:00  aumid=<id>  banner=allow  sound=wav  Sentinel self-test
+```
+
+`aumid=` identifies the sender that accepted the call. `banner=allow` means Windows has
+`ShowBanner=1` for that sender; `unset` or `deny` means the call can still succeed while no banner
+appears. If no installed sender is allowed, set `toast_aumid` in `config.json` to an AUMID whose
+notification settings allow banners. The value is written to the log, so the sender is never a guess.
+
 ### 5. Schedule one check per minute
 
 Preview, then register:
@@ -128,7 +139,7 @@ records verdicts, and `logs\toast.log` records notification attempts. Create an 
 | `logs_watched=0` | `root`, `watch_subdir`, and `log_glob` in `config.json` |
 | The task says it ran but nothing happens | Look for fresh `start` lines in the repository's `logs\sentinel_stdout.txt`; the task panel alone is not enough |
 | `Last Result 267009` with `State: Running` | A previous instance is still running; end it and trigger the task once manually |
-| The notification log succeeds but no banner appears | Windows notification, Focus assist, and sender settings |
+| The notification log succeeds but no banner appears | Read `logs\toast.log`: `banner=allow` points to Focus assist or the global switch; `unset`/`deny` means the sender itself is not allowed. Set `toast_aumid`, or enable banners for that sender in Windows notification settings |
 
 ## Adapt it to another solver
 
@@ -154,7 +165,9 @@ python .\sentinel\sentinel.py --explain D:\SimWorkbench\sim\runA\project_p0.log
 - **Stalled detection is delayed.** The default requires repeated unchanged checks. An unknown
   process state is never treated as proof of failure.
 - **Sleep stops checks.** Events whose logs disappear while the computer is asleep cannot be recovered.
-- **A notification is not proof that anyone saw it.** Windows can suppress the banner.
+- **A notification is not proof that anyone saw it.** Windows can suppress the banner, and it
+  controls which registered sender identity is used. `logs\toast.log` records the attempted sender
+  and whether that sender is allowed to show banners; set `toast_aumid` to choose one explicitly.
 - **Completion is not correctness.** The tool does not judge convergence, energy balance, physics,
   or the validity of simulation results.
 

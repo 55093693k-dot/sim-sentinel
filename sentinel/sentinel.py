@@ -54,6 +54,7 @@ DEFAULTS = {
     "tail_bytes": 6000,
     "mtime_window_s": 900,
     "stall_after": 3,
+    "toast_aumid": "",
     "done_patterns": [
         "solver speed",
         r"overall\s+\w+\s+run time",
@@ -179,9 +180,11 @@ def notify(title, body):
     with open(tmp, "w", encoding="utf-8") as fh:
         fh.write(title + "\n" + body + "\n")
     try:
-        r = subprocess.run([POWERSHELL, "-NoProfile", "-ExecutionPolicy", "Bypass",
-                            "-File", TOASTPS1, "-TextFile", tmp, "-LogFile", TOASTLOG],
-                           capture_output=True, timeout=40)
+        cmd = [POWERSHELL, "-NoProfile", "-ExecutionPolicy", "Bypass",
+               "-File", TOASTPS1, "-TextFile", tmp, "-LogFile", TOASTLOG]
+        if CFG.get("toast_aumid"):
+            cmd += ["-AppId", str(CFG["toast_aumid"])]
+        r = subprocess.run(cmd, capture_output=True, timeout=40)
         return r.returncode
     except Exception as e:
         append(EVENTS, {"ts": now(), "kind": "toast_error", "err": str(e)})
