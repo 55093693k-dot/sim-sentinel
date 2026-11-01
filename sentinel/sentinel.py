@@ -211,12 +211,15 @@ def watched():
 
 
 def _announce_key(status, path, rec):
-    """A transition is unique per log AND per run episode.
+    """A transition is unique per log, file episode, and stall episode.
 
-    The old key was only status+filename, so the second stall in the same log
-    looked identical to the first and was silently suppressed.
+    File episode changes only when the log is truncated/replaced.  A stall
+    episode changes when a stalled log starts moving again, so the next stall
+    can notify without treating ordinary footer growth as a new run.
     """
-    return "%s:%s:%d" % (status, os.path.basename(path), int(rec.get("episode", 0)))
+    return "%s:%s:%d:%d" % (status, os.path.basename(path),
+                            int(rec.get("episode", 0)),
+                            int(rec.get("stall_episode", 0)))
 
 
 #: What the last poll learned about the process table, so `main()` can print it without
@@ -323,8 +326,10 @@ def poll():
             continue                # historical runs stay silent, so a lost or
                                     # corrupt state file cannot spam you
         key = os.path.normcase(lg)
-        rec = st.get(key, {"size": -1, "stall": 0, "announced": "", "episode": 0})
+        rec = st.get(key, {"size": -1, "stall": 0, "announced": "",
+                           "episode": 0, "stall_episode": 0})
         rec.setdefault("episode", 0)
+        rec.setdefault("stall_episode", 0)
         if "first_seen" not in rec:
             rec["first_seen"] = time.time()
         fresh = key not in st        # first time we ever see this log
@@ -351,12 +356,19 @@ def poll():
         status, rec["stall"], ev = classify(txt, alive, size, prev_size,
                                             rec.get("stall", 0), CFG["stall_after"])
 
-        # A growing/truncated log after a terminal state is a NEW run episode.
-        # Growth during an active run is normal and must not create an episode;
-        # that is why last_status, not size alone, decides.
-        if size < prev_size or (size > prev_size and prev_status in
-                                ("FINISHED", "FAILED", "STALLED")):
+        # A truncated/replaced log is a new FILE episode.  Growth alone is not:
+        # Lumerical can append result/footer lines after the closing summary,
+        # and treating every such append as a new run re-announces FINISHED.
+        if size < prev_size:
             rec["episode"] = int(rec.get("episode", 0)) + 1
+
+        # A stalled log that starts moving again starts a new STALL episode.
+        # This is the one place growth matters: it re-arms the stall verdict
+        # without changing the file episode or replaying FINISHED.
+        if (prev_status == "STALLED" and size != prev_size
+                and rec["stall"] == 0):
+            rec["stall_episode"] = int(rec.get("stall_episode", 0)) + 1
+
         rec["size"] = size
         rec["last_status"] = status
         st[key] = rec

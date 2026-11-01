@@ -174,11 +174,22 @@ class PollTransitions(unittest.TestCase):
         self.assertEqual(sentinel.poll(), [])       # same stall: no duplicate
 
         with open(self.log, "a", encoding="utf-8") as fh:
-            fh.write("step 2\n")                    # a new run episode
+            fh.write("step 2\n")                    # recovery, new stall episode
         second = []
         for _ in range(3):
             second.extend(sentinel.poll())
         self.assertEqual([e["kind"] for e in second], ["STALLED"])
+
+    def test_finished_log_growth_does_not_reannounce(self):
+        sentinel.DONE_RE, sentinel.ERR_RE = sentinel.build_patterns(
+            ["solver speed"], ["__no_error__"])
+        with open(self.log, "w", encoding="utf-8") as fh:
+            fh.write("solver speed\n")
+        self.assertEqual(sentinel.poll(), [])       # first sighting is silent
+        for footer in ("footer 1\n", "footer 2\n"):
+            with open(self.log, "a", encoding="utf-8") as fh:
+                fh.write(footer)
+            self.assertEqual(sentinel.poll(), [])   # growth alone is not a new run
 
     def test_missing_watch_directory_returns_nonzero(self):
         sentinel.WATCH = os.path.join(self.root, "does-not-exist")
