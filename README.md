@@ -119,6 +119,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\launch\register_tasks.ps1 
 | `FAILED` | A configured error line appears and no engine process is found |
 | `STALLED` | The log stops growing for the configured number of checks and no engine process is found |
 
+The notification titles are `Simulation finished: <file>`, `Simulation failed: <file>`, and
+`Simulation stalled: <file>`. The body carries the observed elapsed time, the last percentage when
+one exists, and the log path relative to `root`.
+
 Each check starts Python, reads recent logs, saves their state, and exits. Normally only the last
 6 KB of each log is read. Nothing stays resident between checks.
 
