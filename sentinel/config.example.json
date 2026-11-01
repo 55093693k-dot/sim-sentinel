@@ -11,8 +11,7 @@
     "solver speed",
     "overall\\s+\\w+\\s+run time",
     "total simulation time",
-    "simulation completed",
-    "100(?:\\.0+)?\\s*%\\s*complete"
+    "simulation completed"
   ],
   "error_patterns": [
     "^\\s*error\\s*:",

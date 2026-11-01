@@ -9,8 +9,12 @@ Every case below is a real log tail or a real misjudgement recorded while this
 tool was being written. Nothing here touches the filesystem, the clock or a
 process table; that is the point of keeping the verdict pure.
 """
+import contextlib
+import copy
+import io
 import os
 import sys
+import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -29,6 +33,8 @@ EME_DONE = "Overall EME run time (s): 483.773\n"
 BENIGN = ("loaded material data from library; cannot find optional cache, "
           "using defaults. no error.\n")
 HUNDRED = "100% complete. Auto Shutoff: 0.0005\n"
+DONE_THEN_ERROR = DONE + "\n" + ERROR
+ERROR_BEFORE_DONE = ERROR + "\n" + DONE
 
 
 def verdict(text, alive=True, size=1000, prev=1000, stall=0, after=3, **regexes):
@@ -51,8 +57,17 @@ class VerdictVocabulary(unittest.TestCase):
     def test_eme_summary_line_is_finished(self):
         self.assertEqual(verdict(EME_DONE)[0], "FINISHED")
 
-    def test_hundred_percent_plus_threshold_is_finished(self):
-        self.assertEqual(verdict(HUNDRED)[0], "FINISHED")
+    def test_hundred_percent_progress_is_not_finished(self):
+        # 100% is printed before results are written; it is not a closing summary.
+        self.assertIsNone(verdict(HUNDRED)[0])
+
+    def test_error_after_closing_summary_is_failed(self):
+        status, _, ev = verdict(DONE_THEN_ERROR, alive=True)
+        self.assertEqual(status, "FAILED")
+        self.assertTrue(any(r == "error" for r, _ in ev))
+
+    def test_error_before_closing_summary_is_a_recovered_transient(self):
+        self.assertEqual(verdict(ERROR_BEFORE_DONE, alive=False)[0], "FINISHED")
 
     def test_anchored_error_with_dead_process_is_failed(self):
         status, _, ev = verdict(ERROR, alive=False)
@@ -111,6 +126,70 @@ class VocabularyIsData(unittest.TestCase):
         self.assertFalse(done_re.search(DONE))
         self.assertFalse(err_re.search(ERROR))
         self.assertIsNone(verdict(DONE, alive=False, done_re=done_re, err_re=err_re)[0])
+
+
+class PollTransitions(unittest.TestCase):
+    """The stateful half: repeated stalls and exit codes, in a temp directory."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = self.tmp.name
+        self.logdir = os.path.join(self.root, "logs")
+        os.makedirs(self.logdir)
+        self.log = os.path.join(self.root, "run_p0.log")
+        with open(self.log, "w", encoding="utf-8") as fh:
+            fh.write("step 1\n")
+        self.saved = {
+            "ROOT": sentinel.ROOT, "WATCH": sentinel.WATCH,
+            "LOGDIR": sentinel.LOGDIR, "STATE": sentinel.STATE,
+            "EVENTS": sentinel.EVENTS, "PAUSE": sentinel.PAUSE,
+            "CFG": sentinel.CFG, "DONE_RE": sentinel.DONE_RE,
+            "ERR_RE": sentinel.ERR_RE, "engines_alive": sentinel.engines_alive,
+            "notify": sentinel.notify,
+        }
+        sentinel.ROOT = self.root
+        sentinel.WATCH = self.root
+        sentinel.LOGDIR = self.logdir
+        sentinel.STATE = os.path.join(self.logdir, "state.json")
+        sentinel.EVENTS = os.path.join(self.logdir, "events.jsonl")
+        sentinel.PAUSE = os.path.join(self.root, "sentinel.pause")
+        sentinel.CFG = copy.deepcopy(sentinel.CFG)
+        sentinel.CFG.update({"log_glob": "*.log", "stall_after": 2,
+                             "mtime_window_s": 900})
+        sentinel.DONE_RE, sentinel.ERR_RE = sentinel.build_patterns(
+            ["__no_done__"], ["__no_error__"])
+        sentinel.engines_alive = lambda: False
+        sentinel.notify = lambda *args, **kwargs: 0
+
+    def tearDown(self):
+        for name, value in self.saved.items():
+            setattr(sentinel, name, value)
+        self.tmp.cleanup()
+
+    def test_second_stall_in_the_same_log_is_announced(self):
+        first = []
+        for _ in range(3):
+            first.extend(sentinel.poll())
+        self.assertEqual([e["kind"] for e in first], ["STALLED"])
+        self.assertEqual(sentinel.poll(), [])       # same stall: no duplicate
+
+        with open(self.log, "a", encoding="utf-8") as fh:
+            fh.write("step 2\n")                    # a new run episode
+        second = []
+        for _ in range(3):
+            second.extend(sentinel.poll())
+        self.assertEqual([e["kind"] for e in second], ["STALLED"])
+
+    def test_missing_watch_directory_returns_nonzero(self):
+        sentinel.WATCH = os.path.join(self.root, "does-not-exist")
+        old_argv = sys.argv
+        sys.argv = ["sentinel.py"]
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                rc = sentinel.main()
+        finally:
+            sys.argv = old_argv
+        self.assertEqual(rc, 2)
 
 
 if __name__ == "__main__":

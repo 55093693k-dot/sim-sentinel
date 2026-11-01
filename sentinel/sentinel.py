@@ -69,7 +69,10 @@ DEFAULTS = {
         r"overall\s+\w+\s+run time",
         "total simulation time",
         "simulation completed",
-        r"100(?:\.0+)?\s*%\s*complete",
+        # Do NOT add `100% complete`: Lumerical prints it while stepping ends,
+        # before results are written, so it is a progress line, not a closing
+        # summary. The error-after-done check below still handles a custom
+        # vocabulary that decides to keep it.
     ],
     "error_patterns": [
         r"^\s*error\s*:",
@@ -207,6 +210,15 @@ def watched():
     return glob.glob(os.path.join(WATCH, CFG["log_glob"]), recursive=True)
 
 
+def _announce_key(status, path, rec):
+    """A transition is unique per log AND per run episode.
+
+    The old key was only status+filename, so the second stall in the same log
+    looked identical to the first and was silently suppressed.
+    """
+    return "%s:%s:%d" % (status, os.path.basename(path), int(rec.get("episode", 0)))
+
+
 #: What the last poll learned about the process table, so `main()` can print it without
 #: asking the operating system a second time. Reading the process list is the single most
 #: expensive call in a poll (measured: about 2 s on a loaded machine), and it is only needed
@@ -230,17 +242,27 @@ def classify(tail_text, alive, size, prev_size, stall_count, stall_after,
     err_re = ERR_RE if err_re is None else err_re
     ev = []
 
-    m = done_re.search(tail_text)
-    if m:
-        ev.append(("done", "matched %r" % m.group(0).strip()))
-        return "FINISHED", stall_count, ev
-    ev.append(("done", "no closing summary line"))
-
+    m_done = done_re.search(tail_text)
     e = err_re.search(tail_text)
+
+    # Error first: an anchored error AFTER a closing summary means the run
+    # failed while writing/analysing results, even if an engine process is
+    # still alive. An error BEFORE a later closing summary is a recovered
+    # transient and must not erase the FINISHED verdict.
     if e:
         ev.append(("error", "matched %r" % e.group(0).strip()))
+        if m_done:
+            if e.start() >= m_done.start():
+                return "FAILED", stall_count, ev
+        elif alive is False:
+            return "FAILED", stall_count, ev
     else:
         ev.append(("error", "no anchored error pattern"))
+
+    if m_done:
+        ev.append(("done", "matched %r" % m_done.group(0).strip()))
+        return "FINISHED", stall_count, ev
+    ev.append(("done", "no closing summary line"))
 
     if alive is False:
         ev.append(("alive", "False -- no engine process"))
@@ -301,10 +323,13 @@ def poll():
             continue                # historical runs stay silent, so a lost or
                                     # corrupt state file cannot spam you
         key = os.path.normcase(lg)
-        rec = st.get(key, {"size": -1, "stall": 0, "announced": ""})
+        rec = st.get(key, {"size": -1, "stall": 0, "announced": "", "episode": 0})
+        rec.setdefault("episode", 0)
         if "first_seen" not in rec:
             rec["first_seen"] = time.time()
         fresh = key not in st        # first time we ever see this log
+        prev_size = rec.get("size", -1)
+        prev_status = rec.get("last_status")
         txt, size = tail(lg)
         last_line = ""
         for line in reversed(txt.splitlines()):
@@ -323,17 +348,26 @@ def poll():
             alive, alive_known = engines_alive(), True
             _LAST_ALIVE["value"] = alive
 
-        status, rec["stall"], ev = classify(txt, alive, size, rec.get("size", -1),
+        status, rec["stall"], ev = classify(txt, alive, size, prev_size,
                                             rec.get("stall", 0), CFG["stall_after"])
+
+        # A growing/truncated log after a terminal state is a NEW run episode.
+        # Growth during an active run is normal and must not create an episode;
+        # that is why last_status, not size alone, decides.
+        if size < prev_size or (size > prev_size and prev_status in
+                                ("FINISHED", "FAILED", "STALLED")):
+            rec["episode"] = int(rec.get("episode", 0)) + 1
         rec["size"] = size
+        rec["last_status"] = status
         st[key] = rec
 
+        new_key = _announce_key(status, lg, rec) if status else ""
         if status and fresh:
             # First sighting: adopt it as the baseline and stay SILENT. Without
             # this, the very first run toasts every already-finished log.
-            rec["announced"] = status + os.path.basename(lg)
-        elif status and rec.get("announced") != status + os.path.basename(lg):
-            rec["announced"] = status + os.path.basename(lg)
+            rec["announced"] = new_key
+        elif status and rec.get("announced") != new_key:
+            rec["announced"] = new_key
             rel = os.path.relpath(lg, ROOT)
             name = os.path.basename(lg)
             label = {"FINISHED": "finished", "FAILED": "failed", "STALLED": "stalled"}[status]
@@ -375,7 +409,7 @@ def main():
     if not os.path.isdir(WATCH):
         print("%s watch directory does not exist: %s" % (now(), WATCH))
         print("  fix `root` / `watch_subdir` in %s" % CONFIG)
-        return 0
+        return 2
     if "--loop" in args:
         i = args.index("--loop")
         secs = int(args[i + 1]) if len(args) > i + 1 else 30
