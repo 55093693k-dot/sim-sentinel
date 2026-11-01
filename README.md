@@ -14,11 +14,17 @@ local text logs.
 [![tests](https://github.com/55093693k-dot/sim-sentinel/actions/workflows/tests.yml/badge.svg)](https://github.com/55093693k-dot/sim-sentinel/actions/workflows/tests.yml)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23817306.svg)](https://doi.org/10.5281/zenodo.23817306)
 
-![Example notification](docs/toast-example.png)
+## Notification states
 
-*A demonstration notification. Progress may remain below 100% when the solver's own stopping condition
-is met: this example ends at 99.3998% while the closing summary line marks completion. Windows
-notification settings control whether the banner is visible.*
+| FINISHED | FAILED | STALLED |
+|---|---|---|
+| **Closing line found**<br><img src="docs/toast-finished.png" alt="FINISHED notification" width="100%"> | **Anchored error, no engine process**<br><img src="docs/toast-failed.png" alt="FAILED notification" width="100%"> | **Log unchanged for the configured polls**<br><img src="docs/toast-stalled.png" alt="STALLED notification" width="100%"> |
+
+Real captures from one Windows test machine. The sender label is chosen by Windows at capture time;
+`toast.log` records the actual AUMID. The STALLED image was captured from the notification centre, so
+it shows the time and body but not the sender or log path. The finished example ends at 99.3998%:
+completion comes from the solver's closing summary line, not from the percentage. Whether a banner
+is visible still depends on Windows notification settings.
 
 ## Quick start
 
@@ -263,5 +269,5 @@ Questions and suggestions: **[Discussions](https://github.com/55093693k-dot/sim-
 
 Copyright (c) 2026 Chan Kingho.
 
-Source code, tests, and automation scripts are MIT; written documentation and the screenshot are
+Source code, tests, and automation scripts are MIT; written documentation and the screenshots are
 CC BY 4.0. See `LICENSE` and `LICENSE-docs.md`.

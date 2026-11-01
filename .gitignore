@@ -1,6 +1,7 @@
 # Bytecode and caches: these must never enter an archived release.
 __pycache__/
 *.py[cod]
+desktop.ini
 
 # Local configuration and everything the tool writes at run time.
 # config.example.json is the shipped template; config.json is yours.
