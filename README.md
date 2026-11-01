@@ -87,13 +87,15 @@ The self-test uses temporary files, does not touch real simulations, and must en
 A successful test adds one line to `logs\toast.log`:
 
 ```text
-OK  2026-11-01 12:00:00  aumid=<id>  banner=allow  sound=wav  Sentinel self-test
+OK  2026-11-01 12:00:00  aumid=<id>  setting=Enabled  banner=allow  sound=wav  Sentinel self-test
 ```
 
-`aumid=` identifies the sender that accepted the call. `banner=allow` means Windows has
-`ShowBanner=1` for that sender; `unset` or `deny` means the call can still succeed while no banner
-appears. If no installed sender is allowed, set `toast_aumid` in `config.json` to an AUMID whose
-notification settings allow banners. The value is written to the log, so the sender is never a guess.
+`aumid=` identifies the sender that accepted the call. `setting=Enabled` means Windows reports the
+app's notification channel as enabled; any other value means that sender is blocked. `banner=allow`
+means Windows has `ShowBanner=1` for that sender; `unset` or `deny` means the call can still succeed
+while no banner appears. If no installed sender is allowed, set `toast_aumid` in `config.json` to an
+AUMID whose notification settings allow banners. The value is written to the log, so the sender is
+never a guess.
 
 ### 5. Schedule one check per minute
 
