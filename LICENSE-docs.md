@@ -16,7 +16,7 @@ repository or the archived record when the material is reused.
 - `_selftest_kit.ps1`
 - `.github/workflows/tests.yml`
 
-The written documentation -- `README.md`, this file, and the prose inside
+The written documentation -- `README.md`, `SECURITY.md`, this file, and the prose inside
 `CITATION.cff` -- and the screenshot in `docs/` are licensed under
 **CC BY 4.0** (https://creativecommons.org/licenses/by/4.0/).
 

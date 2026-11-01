@@ -216,6 +216,41 @@ python .\sentinel\sentinel.py --explain D:\SimWorkbench\sim\runA\project_p0.log
 - **Completion is not correctness.** The tool does not judge convergence, energy balance, physics,
   or the validity of simulation results.
 
+## Uninstall and cleanup
+
+Remove the scheduled task first:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\launch\register_tasks.ps1 -Remove
+```
+
+If the launcher is already gone, remove the task directly:
+
+```powershell
+Unregister-ScheduledTask -TaskName 'Sim_Sentinel_1min' -Confirm:$false
+```
+
+Then remove only the files the tool created:
+
+- The extracted repository folder (code, `config.json`, and repository `logs\sentinel_stdout.txt`).
+- `<root>\logs\state.json`, `events.jsonl`, `toast.log`, and `_toast_msg.txt`.
+- `<root>\sentinel.pause`, if present.
+- Any custom sound path or `toast_aumid` entry in the removed `config.json`.
+
+**Do not delete `*_p0.log`, `.fsp`, result files, or the simulation folders.** The tool only records
+its own state; removing its `logs\` directory does not remove simulation output.
+
+## Safety and security
+
+`sim-sentinel` is a local log reader. It does not edit simulation files, start or kill a solver,
+change Windows settings, or shut down the computer. It runs with the current user's permissions and
+does not use the network, a model, telemetry, a service, or a driver.
+
+It still creates state and notification records under `logs/`; treat those files as private. Windows,
+Python, the solver, and the hardware can fail independently, so no software can guarantee that a
+machine will never crash. The tool is not a substitute for solver validation or backups. See
+[SECURITY.md](SECURITY.md) for the precise scope and reporting guidance.
+
 ## Citation and discussions
 
 Cite the concept DOI, which resolves to the latest archived version:
