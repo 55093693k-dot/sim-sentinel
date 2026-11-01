@@ -6,6 +6,7 @@
   "mtime_window_s": 900,
   "stall_after": 3,
   "toast_aumid": "",
+  "toast_sound": "",
   "done_patterns": [
     "solver speed",
     "overall\\s+\\w+\\s+run time",

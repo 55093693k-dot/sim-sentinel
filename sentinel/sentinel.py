@@ -41,6 +41,14 @@ import subprocess
 import sys
 import time
 
+# A Chinese Windows console may use cp950. A non-ASCII config path must not crash the
+# check while it is explaining a different problem.
+try:
+    sys.stdout.reconfigure(errors="replace")
+    sys.stderr.reconfigure(errors="replace")
+except (AttributeError, ValueError):
+    pass
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG = os.path.join(HERE, "config.json")
 
@@ -55,6 +63,7 @@ DEFAULTS = {
     "mtime_window_s": 900,
     "stall_after": 3,
     "toast_aumid": "",
+    "toast_sound": "",
     "done_patterns": [
         "solver speed",
         r"overall\s+\w+\s+run time",
@@ -78,7 +87,7 @@ DEFAULTS = {
 def load_config():
     cfg = dict(DEFAULTS)
     try:
-        with open(CONFIG, "r", encoding="utf-8") as fh:
+        with open(CONFIG, "r", encoding="utf-8-sig") as fh:
             cfg.update(json.load(fh))
     except (OSError, ValueError):
         pass                      # missing/broken config -> defaults, never crash
@@ -184,6 +193,9 @@ def notify(title, body):
                "-File", TOASTPS1, "-TextFile", tmp, "-LogFile", TOASTLOG]
         if CFG.get("toast_aumid"):
             cmd += ["-AppId", str(CFG["toast_aumid"])]
+        if CFG.get("toast_sound"):
+            sound = os.path.expandvars(os.path.expanduser(str(CFG["toast_sound"])))
+            cmd += ["-SoundFile", sound]
         r = subprocess.run(cmd, capture_output=True, timeout=40)
         return r.returncode
     except Exception as e:

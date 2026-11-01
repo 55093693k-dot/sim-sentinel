@@ -49,19 +49,25 @@ Edit `sentinel\config.json`:
 This searches `D:\SimWorkbench\sim` and its subfolders for files ending in `_p0.log`. If the logs are
 directly under `root`, set `watch_subdir` to `""`. Keep the other settings at their defaults initially.
 
-### 3. Set the Python path
+### 3. Python path (usually automatic)
 
-Find your interpreter and put its full path in `launch\sentinel_run.cmd`:
+`launch\sentinel_run.cmd` first tries the Windows `py -3` launcher, then `python` on `PATH`. On most
+machines no edit is needed. If both are missing, the launcher writes `ERROR python not found` to
+`logs\sentinel_stdout.txt` and exits with code 9009.
 
-```powershell
-(Get-Command python).Source
-```
+To force a specific interpreter, open `launch\sentinel_run.cmd` and replace:
 
 ```bat
-set PY=C:\Python311\python.exe
+set "PY="
 ```
 
-Do not append a comment to this line.
+with its full path:
+
+```bat
+set "PY=C:\Python311\python.exe"
+```
+
+Do not append a comment to that line.
 
 ### 4. Check before scheduling
 
@@ -119,6 +125,38 @@ Each check starts Python, reads recent logs, saves their state, and exits. Norma
 This is not a continuously updating progress bar. Detailed percentages remain in the original log.
 A recorded percentage can stay below 100% even for a completed run; `FINISHED` is taken from the
 solver's closing summary line, not from the percentage.
+
+## Notification sound
+
+By default the tool plays `%SystemRoot%\Media\Windows Notify System Generic.wav` and falls back to a
+console beep. To use your own sound, put a standard WAV file at a fixed path and set
+`toast_sound` in `config.json`:
+
+```json
+{
+  "toast_sound": "C:\\Sounds\\sim-done.wav"
+}
+```
+
+`%USERPROFILE%` and `~` are expanded. Leave the value empty to keep the system sound. The toast XML
+is deliberately silent; `toast.ps1` plays the file itself, so the custom sound does not depend on
+the sender application's notification audio policy.
+
+Read the last line of `<root>\logs\toast.log` to see what happened:
+
+| `sound=` | Meaning |
+|---|---|
+| `custom` | the configured WAV played |
+| `wav` | the system WAV played |
+| `custom-missing+default` | the custom path was wrong; the system WAV played instead |
+| `beep` or `...+beep` | no WAV could be played; the console beep was used |
+
+A missing or unsupported custom file is not fatal: the tool falls back to the system WAV, then to a
+beep. MP3 and other formats are not decoded by `System.Media.SoundPlayer`; use WAV.
+
+Sound can still be lost when the system is muted, the output device is unavailable, the volume is
+too low, or the scheduled task did not run. Those are separate from banner visibility: the banner
+can be suppressed by Windows while the sound still plays, or the reverse.
 
 ## Resource use
 
